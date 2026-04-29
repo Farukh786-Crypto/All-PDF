@@ -1,0 +1,917 @@
+Middeware = handle request and response
+
+class customeTimeCheck 
+{
+	RequestDelegate _next
+   ctor(RequestDelegate next)
+   {
+       _next = next;
+   }
+   
+   async invoke(HttpContext context)
+   {
+      var checkTime = DatetTime.Now();
+	  await _next(context); // called next middeware
+	  
+	  var finalTime = checkTime - DatetTime.Now();
+   
+   }
+
+}
+
+
+program.cs
+builder.app.UseMiddeware<customeTimeCheck>();
+
+
+------------------------------------------------------------------------------------------
+different types of DI in asp.net core web api
+
+
+builder.services.AddScope();  per request object instance is created
+
+
+public IActioncontroller HomeControe(customer obj1 , customer obj2) 
+
+builder.services.AddTranscient<>();    every you inject object instance is created
+
+builder.Services.AddSingleton<>();   only one object instance create for whole application
+
+--------------------------------------------------------------------------------------------
+
+
+
+JWT = Json Web Token
+
+Header . payload  .         signature
+Algo    identityclaims     secret key
+type     Role  / rights
+------------------------------------------------
+find target of particular array
+
+hashset<int> sh = new Hashset<int>();
+for(int i=0;i<=arr.length;i++)
+{
+	inr compliment = target - arr[i];
+	if(sh.Contains(compliment))
+	{
+		Console.WriteLine($"{compliment} + {arr[i]} = {target}");
+	}
+
+}
+
+two pointer approach
+
+letf = 0;
+right  = arr.length -1;
+
+while(left<right)
+{
+
+  if(arr[left]+arr[right]=target)
+  {
+     left++ ;
+	 right-- ;
+	 cw(")
+  }
+}
+
+----------------------------------
+select row_number() over (partition by name order by name) as id , name from tblName
+
+create table #Dest(
+  id varchar(max),
+  amount Desc(10,2)
+);
+
+
+
+declare @n
+set @n=1;
+select * from tblEmployee t1 where @n=
+select count(*) from tblEmployee t2 where t1.Salary <= t2.Salary;
+
+
+create proc <procedure_name>
+@id int,
+@name varchar(max)
+as
+begin
+	
+
+end
+
+
+create trigger <rtname>
+on tblaudit instead of/after insert,update,delete
+as
+begin 
+	insert into tblAudit value(GetDate());
+end
+
+-----------------
+
+create table tbl1(id int primary key)
+
+
+create table tbl2(id_fk int references tbl(id))
+
+
+
+-----------------------------
+
+
+The Factory Pattern is a Creational Design Pattern that provides 
+an interface for creating objects but allows a dedicated Factory class to decide which concrete class to instantiate at runtime.
+
+
+step 1> create interface
+public interface IPaymentGateway
+{
+   void ProcessPayment(decimal amount);
+}
+
+step 2> implement in concrete class
+
+// paypalGateway.cs
+
+public class Paypalgateway : IPaymentGateway
+{
+   public void ProcessPayment(decimal amount)
+   {
+		Console.WriteLine($"[PayPal] Processed ${amount} suceessafully");
+   }
+}
+
+// StripeGateway.cs
+
+public class  StripeGateway : IPaymentGateway
+{
+	public void ProcessPayment(decimal amount)
+	{
+		Console.WriteLine($"[Stripe] processed ${amount} suceessafully");
+	}
+}
+
+// CreditcardGateway.cs
+
+
+step 3> create Factory patteren This class uses IServiceProvider to dynamically pull the right object from the .NET DI container.
+
+// IPaymentGatewayFactory.cs
+
+public interface IPaymentGatewayFactory
+{
+	IPaymentGateway getPaymentGetway(string gateway);
+}
+
+// PaymentGatewayFactory.cs
+
+public class PaymentGatewayFactory : IPaymentGatewayFactory
+{
+	private readonly IServiceProvider _serviceProvider;
+	
+	public PaymentGatewayFactory(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+	
+	public IPaymentGateway getPaymentGetway(string gatewayType)
+	{
+		return gatewayType.ToLower() switch
+		{
+			case "Paypal" => _serviceProvider.GetRequiredService<Paypalgateway>(),
+			      
+			case "Stripe" => _serviceProvider.GetRequiredService<StripeGateway>(),
+			default :
+				throw new ArgumentException("Invalid payment gateway type");
+		}
+	
+	}
+}
+
+step 4> DI register in program.cs
+
+// register concrete class
+builder.Services.AddScope<Paypalgateway>();
+builder.Services.AddScope<StripeGateway>();
+
+// register Factory patteren
+
+builder.Services.AddScope<IPaymentGatewayFactory,PaymentGatewayFactory>();
+
+
+
+step 5> controller
+// controller just asked for factory
+
+[ApiController]
+[Route("api/[controller]")]
+
+public class PaymentController : ControllerBase
+{
+	private readonly IPaymentGatewayFactory _factory;
+	
+	public PaymentController(IPaymentGatewayFactory factory)
+	{
+		_factory = factory;
+	}
+
+	
+	[Httpost("pay")]
+	
+	public IActionResult Pay(string gateway,decimal Amount)
+	{
+		try
+		{
+			// Get specific gateway from the factory
+			var gateway = _factory.getPaymentGetway(gateway); 
+			
+			// execute payment logic
+			gateway.ProcessPayment(amount);
+			
+			return StatusCode(StatusCode.200ok,"payment sucessafull");
+			
+		}
+		catch(ArgumentException ex)
+		{
+			return BadRequest(ex.Message);
+		}
+	}
+}
+
+
+
+
+If an interviewer asks: "What problem does the Factory pattern solve?", give them this 3-point answer:
+
+Centralization: "It centralizes object creation logic. If we need to change how a PaymentGateway is created, we only change it in the Factory, not across the entire application."
+
+Abstraction: "It allows the calling code to remain ignorant of concrete implementations. The Controller only works with IPaymentGateway, making the code loosely coupled."
+
+Extensibility: "It makes the code Open for Extension but Closed for Modification. I can add GooglePay, ApplePay, or BitCoin by adding new classes and updating the Factory,
+ without ever touching the existing Order or Checkout logic."
+
+
+
+
+
+ -----------------------------------------------------------------------------------------------------------------------------
+ 
+																		2. Unit Of Work 
+																		
+
+In your microservices project (specifically the Ordering.API which uses SQL Server), you might have multiple repositories—for example, an OrderRepository and a CustomerRepository.
+
+Without Unit of Work, if you update an Order and then update a Customer, you have to call _context.SaveChanges() twice. If the first one succeeds but the second one fails,
+ your database is now in a "half-baked" state. This is a disaster for data integrity.
+ 
+ 
+Quest > What is Unit Of Work
+- The Unit of Work is a pattern that groups one or more operations (usually across multiple repositories) into a single transaction. 
+It ensures that either all changes are committed to the database, or none of them are.
+
+Quest > What recurring problem it solve
+Concurrency: It prevents multiple repositories from opening multiple connections to the same database.
+
+
+public void ProcessOrder(Order order)
+{
+    _orderRepo.Add(order);
+    _orderRepo.SaveChanges(); // First Hit to DB
+
+    _customerRepo.UpdateLoyaltyPoints(order.CustomerId);
+    _customerRepo.SaveChanges(); // Second Hit to DB -> If this fails, the Order above is already saved! (Bad)
+}
+
+step 1> The Interface
+public interface IUnitOfWork : IDisposable
+{
+    IOrderRepository Orders { get; }
+    ICustomerRepository Customers { get; }
+    Task<int> CompleteAsync(); // This is the ONLY place SaveChanges is called
+}
+
+
+step 2>The Implementation
+
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly OrderContext _context;
+    public IOrderRepository Orders { get; private set; }
+    public ICustomerRepository Customers { get; private set; }
+
+    public UnitOfWork(OrderContext context)
+    {
+        _context = context;
+        Orders = new OrderRepository(_context);
+        Customers = new CustomerRepository(_context);
+    }
+
+    public async Task<int> CompleteAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+
+    public void Dispose() => _context.Dispose();
+}
+
+step 3> Usages in your Ordering.ApiController
+
+public async Task HandleOrder(Order order)
+{
+    _uow.Orders.Add(order);
+    _uow.Customers.UpdateLoyaltyPoints(order.CustomerId);
+
+    // One single transaction!
+    await _uow.CompleteAsync(); 
+}
+
+
+Repository Pattern: Handles "How" to get/save data (The logic).
+
+Unit of Work: Handles "When" to save data (The transaction).
+
+
+quest >  what is different bewteen unit Of Work and Saga Patteren
+
+Unit of Work is for "One Database" (Local consistency).
+
+Saga Pattern is for "Multiple Databases" (Distributed consistency).
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                                              -----------------  LINQ ------------------------
+															  
+List<Employee>? employees = new List<Employee>() { 
+    new Employee(){ Id=1,Name="Tom",Email="tom@gmail.com" },
+    new Employee(){ Id=2,Name="John",Email="john@gmail.com" },
+    new Employee(){ Id=3,Name="Mark",Email="mark@gmail.com" },
+    new Employee(){ Id=4,Name="Kim",Email="kim@gmail.com" },
+};
+
+var methodsyntax = employees.select(e=>e.id).toList();
+var methodsyntax = employees.select(e=>new { e.Id , e.Name }).ToList();
+
+// add new elemetn
+
+var selectMethod = employees.select(e=>new student()
+{
+		StudentId = e.Id,
+		stName = e.Name,
+		stEmail = e.Email
+	
+}).ToList();
+
+
+Quest 2>
+var dataSource = new List<Employee>()
+{
+    new Employee(){ Id=1,Name="Tom",Email="Tom@gmail.com",Programming=new List<string>(){ "C#","PHP","JAVA" } },
+    new Employee(){ Id=2,Name="Kim",Email="Kim@gmail.com",Programming=new List<string>(){ "LINQ","C#","MVC" } },
+    new Employee(){ Id=3,Name="Harry",Email="Harry@gmail.com",Programming=new List<string>(){ "LINQ","VB","SQL" } },
+
+};
+
+// It takes those three inner lists of programming and flattens them.														
+var methodQuery = dataSource.selectMany(e=>e.Programming).ToList();
+
+Quest 3> Get all unique programming languages used in the company
+
+var uniqueLanguage = dataSource.selectMany(e=>e.programming)
+					.distint()                 // find unique by removing duplicate element
+					.orderBy(lang=>lang)
+					.ToList();
+					
+					
+
+Quest 4> 
+
+var dataSource = new List<string>() { "Tom","Harry","Adam","Ponting","Sachin" };
+var methodSyntx = dataSource.where(s=>s.length > 5 && s === "Tom").toList();
+
+
+Quest 5> Sorting in LINQ
+
+  var dataSourceStrings=new List<string>() { 
+      "Smith","Anderson","Wright","Mitchell","Thomas","Allen","Evans","Collins"
+  };
+  
+  // ascending
+  var asc= dataSource.orderby(name=>name).ToList();
+  var desc = dataSourceStrings.orderByDescending(name=>name).ToList();
+ 
+  ** thenBy and then
+  I use ThenBy when I need a multi-column sort. OrderBy performs the primary sort,
+  
+  // overrite probelm
+  var result = employees.OrderByDescending(e => e.Name)
+                      .OrderBy(e => e.Id);
+					  
+  What happens? The OrderBy(e => e.Id) completely destroys the work done by the first sort. The final list will only be sorted by Id in ascending order. The Name sorting is lost
+  
+  // The Correct Professional Way
+  var result = employees.OrderByDescending(e => e.Name) // Primary Sort (Z to A)
+                      .ThenBy(e => e.Id);            // Secondary Sort (1 to 100)
+					  
+					  
+Quest6> Sort it then reverdse it
+
+var result = employee.orderBydesceing(e=>e.name).Reverse();
+
+
+Quest 7>
+ List<int> num[] = new List<int>({1,2,3,4,5,6,7,8});
+ 
+ // Returns true if every item matches.
+ var query = num.All(x=>x>0).ToList();
+ 
+ // Returns true if at least one item matches.
+ var query = num.Any(x=>x>6);
+ 
+ // Return true if the specific value exists
+ var query = num.contains(10);
+ 
+ 
+ Query 8> Set Operations
+ 
+var list1 = new List<int> { 1, 2, 3, 4 };
+var list2 = new List<int> { 3, 4, 5, 6 };
+
+ // distinct - remove duplicate
+ list1.distinct();
+ o/p = {1, 2, 3, 4}
+ 
+ // Except - item present in one not present in another array
+ list1.Except(list2);
+ o/p = {1, 2} (Items in list1 but not in list2).
+ 
+ // intersect - find common value
+  list1.intersect(list2); 
+  o/p = {3, 4} (Items common to both lists).
+  
+  // union -  combine two result set of removing duplicate records
+  list1.union.(list2)  // {1, 2, 3, 4, 5, 6} (Combines both, removes duplicates)
+  
+  
+  Query 9> Pagination
+  
+  Take(3) // grabs first 3 records
+  skip(3) // skips first 3 records
+  
+  
+  Query 10> Element Operators
+	single() - return exactly one match if we have more than 1 match or o match then pass error
+	First() - return first element id we have more than 1 match  thorws error if list is empty or not found
+	FirstOrDefault() - Returns the first element retun null if empty
+	Last() - return last element 
+	ElementAt(index): Returns the item at a specific position (like list[i]).
+	
+	
+	Question 11> Find second larget element in an array
+	int[] numbers = { 5, 10, 8, 10, 2, 1, 15, 15 };
+	
+	Ans= var secondlargest = numbers
+							.distinct()          // remove duplicate element
+							.orderbyDescending() // sorting high to low
+							.skip(1)             // skip first element 
+							.FirstOrDefault()     // find firstValue
+							
+							
+	Query 11> sorting in Array
+	
+	
+	----------------------------------------------
+	
+	i have work on microservices project where we have multiple project  Los service (getting file from blob storage),indexing (using AI assign indexing to this file),
+	versioning(using AI document created version)
+   Document classifications (when agent manually check document and its version it can drag and drop reclassify and reorder in Angular perform redo and undo operation),
+   Data  extraction (what ever pdf file shows number like amount check validate by agent by pdf viwer i.e check amount is in $ or not adding filed ,adding entity , adding source
+     i.e Address entity check permant address m address validate) ,  rule validators (where Testing manually check it following certain rule or not)
+ so specially i have worked on two project Document classification and data extraction and and loan global page where we see each customer having borrower loan 	 
+
+Built on a microservices architecture, the project leverages AI-driven engines to automatically index over 350 document types and extract critical financial data with up to 98% accuracy
+. This "Automation-as-a-Service" platform streamlines the intensive "pre-purchase review" process, transforming the mortgage "paperwork gauntlet" into a high-speed, "one-touch" operation
+. My implementation of these automated workflows directly contributed to a 70% reduction in turnaround time and an 80% drop in data input errors, providing a vital quality control engine for the mortgage market
+
+
+Document Classification: Developed a high-performance Angular UI for manual reclassification (drag-and-drop, undo/redo) to supplement AI indexing of 350+ document types with 95% accuracy
+.
+Data Extraction & Validation: Built a PDF-integrated validation tool for agents to audit AI-extracted entities (e.g., currency formats, address validation) against strict "numbers and legal" rules
+.
+Loan Global Page: Designed a centralized dashboard to support "one-touch" operations, allowing reviewers to identify "conditions" (errors) quickly and reduce turnaround time by 70%
+.
+Microservices Architecture: Managed services for LOS (Blob Storage) and AI-driven Versioning to ensure data consistency across the multi-million dollar loan lifecycle
+
+------------------------------------------
+Extension class
+
+public static class ExtensionClass
+{
+public static  wordCount(this string val)
+{
+   return val.split(' ');
+
+}
+
+} 
+
+----------------------------------------
+
+Exception - hunahandled error occur which stop application for running handling exception
+
+class InValidDenomenator: Exception
+{
+     public InValidDenomenator(string message): base(meesage)
+	{
+	}
+}
+
+
+
+static int Divide(int a,int b)
+	 {
+	    if(b==0)
+		{
+			// throw maintain stack trace where error originated 
+		    throw new InValidDenomenator("Zero not allowed")
+		}
+	    int num3= a+b;
+        return num3;		
+	 }
+
+try
+{
+     int result = Divide(20,0);
+	 Console.WriteLine($"Divide num is ${result}");
+	 
+}
+catch(InValidDenomenator ex)
+{
+	Console.WriteLine($"Custom Error ${ex.Message}");
+}
+catch(Exception ex)
+{
+	Console.WriteLine($"Error is occure ${ex.stacktrace}");
+}
+finally
+{
+  Console.WriteLine("Final code Thank you");
+}
+
+
+
+--------------------------------------------------------
+
+async and await code = perform asynchronous calling using async and await
+
+
+class program
+{
+
+	static void Main(string[] args)
+	{
+		Method(); // call
+		Console.WriteLine("Main Method");
+		Console.ReadLine();
+	}
+	
+	public static async void Method()
+	{
+		await Task.Run(new Action(LongTask)); // wait for response until main thread is running
+		Console.WriteLine("New Thread");
+	}
+	public static void LongTask()
+	{
+		Thread.sleep(20000);
+	}
+
+}
+------------------------------------------------------------------
+
+yield = perform statefull iteration instead of create temp array we use yield keyword to perform statefull iteration
+Example : in below example instead of write filter logic for that we need to create temp collection but we use yield keyword
+         here when for loop run get 4 th value then it goes to main() he remember last value er het 4 now nect it start iterate through 4 not start with 1
+Programme :
+
+
+using System;
+using System.Collections.Generic;
+
+class Program
+{
+    static void Main()
+    {
+        // Using params means we can pass numbers directly
+        foreach (int x in FilterNumbers(1, 2, 3, 4, 5, 6)) 
+        {
+            Console.WriteLine(x); // Output: 4, 5, 6
+            if (x == 5) break;    // If we stop here, the loop in FilterNumbers also stops!
+        }
+    }
+
+    // params lets us take an array or a list of items
+    static IEnumerable<int> FilterNumbers(params int[] nums)
+    {
+        foreach (int i in nums)
+        {
+            if (i > 3)
+            {
+                yield return i; // "Pause" here and send value to Main
+            }
+        }
+    }
+}
+
+
+-----------------------------------------------------------------------------------------------------
+covariant : Covariance preserve assignment compactibility between parent and child relationship during dynamic polymorphism using "out" keyword
+
+class Animal
+{
+
+}
+
+class Human : Animal
+{
+}
+
+class Dog : Animal
+{
+
+}
+
+According to liskov parent reference assign to child reference it still our code work seamlessely
+
+Animal an = new Human();
+Animal an1 = new  Dog();
+
+
+but in ,net 3.5 if we create  Group of Animal reference should create object of List<Human>() or List<Dog>()
+we get error to resolve this after .NET 3.5 this keyword introduced
+
+IEnumerable<Animal> an = new List<Human>();
+IEnumerable<Animal> an1 = new List<Dog>();
+
+
+contravariance : vice versa where child access element of parent using "in" keyword
+
+class Program
+{
+	delegate void Myptr<in y>(y o)
+	main()
+	{
+		Myptr<Animal> o1= process;  // parent reference
+		Myptr<Dog> odog = o1;   // child reference acces parent
+	}
+	static void Process(Animal obj)
+	{
+		Console.WriteLine(obj.Name)
+	}
+}
+-------------------------------------------------------------------------------------------
+how to run paraller api call using HttpClient Factory
+
+public class ApiService
+{
+	public readonly HttpClient _httpClient;
+	public ApiService(HttpClient httpClient)
+	{
+		_httpClient = httpClient;
+	}
+	
+	public async Task FetchData()
+	{
+		var task1 = _httpClient.GetAsync("api1");  // first api
+		var task2 = _httpClient.GetAsync("api2");  // second api
+		try
+		{
+			await Task.WhenAll(task1,task2);
+		}
+		catch(Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+		}
+		var response1 = await task1;
+		var response2 = await task2;
+	}
+
+}
+
+------------------------------------------------------------------
+
+Delaegate 
+
+// step 1 define delegate
+
+delegate void paymentgateway(double amount);
+//assign event to present subscribe and unsubscribe
+public event paymentgateway;
+
+class Program
+{
+   // step 2 create object
+	paymentgateway paymentobj = updateDatabase;
+	// step 3 call another methodQuery
+	 += SendEmail;       // call another method subscribe  + =
+	 
+	 // step 3
+	 
+	 paymentObj(100);  // pass argument with this two function called
+	 
+	 -= SendEmail;   // remove delegates by unsubscribe  -=
+	 
+	 += null // assign null to resolve this event is used
+}
+
+static void updateDatabase(double amount)=> Console.WriteLine("Database updated");
+static void SendEmail(double amount)=> Console.WriteLine("Send Email");
+
+
+------------------------------------------------------------------------------------
+
+int a= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
+int b= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
+
+int c = (checked)a+b;   // checked keyword check data is overflow or not
+
+if you want to bypass default overflow cheking of const variable used unchecked
+
+const int a= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
+const int b= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
+
+int c = (unchecked)a+b;   // unchecked keyword check data is overflow still bypass it no error shown
+
+
+-----------------------------------------------------
+
+if i have three table customer, order , producy
+
+now  i need to find customer who buys or order only 1 category of product
+
+select customername,p.category,count(productId) from Customer as c
+inner join product as p on c.productId = p.productId
+inner join order as o on c.orderId = o.orderId
+group by(productId) having count(productId)=1;
+-------------------------
+ACID 
+Atomicity = all in one if bankA trnasfer money to bankB failed them amount substraction from BankA should be rollback against
+Conssitency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
+Isolation = when transaction from bank A to bankB perform no one should stop ir not gonna impact from outside
+Durability = transaction donw then save it
+-------------------------------------------------------------------------
+															Threading
+															
+- if you run programme parallelly . 
+- types of thread 
+- backgroung thread  - main thread close all thread are closed
+- foreground thread  - all thread are running even if main thread closed
+
+- Thread Pooling - each and every time thread excute
+- step 1> thre object create    2> thren memory allocate      3> thread run    4> GC
+- Ex :
+ MultiThread obj = new MultiThread(); 
+ Thread obj = new Thread(obj.Func1()) ;
+ obj.start();    // running thread
+ 
+ - if we have 100 same thread every time thread start , assign memory then execute is havy load due to this thread pooling check if thread object create already instead of create
+  and assign memory it coming to thread pooling and thread execute so it is time saving
+  
+  Ex : threadpool.QueeUserWorkItem();
+  
+ -- TPL
+ 
+ - in threading context switching happen means if we have two thread one thread run first then second start later then it stop then again go to thread 1 but we think it run execute
+ parallel 
+ - if 10 thread run one core get 6 and other core get only 4 they are not equally divide thread to avoid this to use maximum utilization of core we use "Task"
+ - in task we have paraller.for(); here equally divide thread to each core 
+ - Task support thread pooling and async and await
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Prompt 1 : Recruiter-proof resume rewriting
+
+Act as a senior recruiter who reviews 200 resumes a day. Rewrite my resume for the position of [target position] in [type of company.]
+replace every responsibility with measurable achievement , elimate everything generic , and make my value impossible to ignore
+
+resume:[paste here]
+
+prompt 2 : Linkdln profile that attracts recruters
+
+rewrite my title , the 'About' secton , and the 3 main experience of my linkdln profile to position myself in the recruiters for the position of\
+[target position] in  [sector or industry].make every word have weigh
+
+Current profile:[paste here].
+
+
+prompt 3: Target candidacy strategy
+
+i want to get a position as cargo in [sector or industry] in [city/remote].Create a 7-day approach , which includes: specific sites where you can find vacancies ,
+search terms, and a daily list of actions that you can execute immeldiately
+
+prompt 4: cold meesage for any hiring manager/
+write a cold meesage on linkdln for hiring manager of  [comapny] about the position of  [position]. Start with a specific observation about, your business , connect that idea with my
+value, and end with a simple and direct request. keep the message below 80 words. My experience:[paste here]
+
+
+prmopt 5:  cover letter that really readsy
+
+write a cover letter for the position of [position] in [comapny], which begin with a powerful idea iristead of i am applying for ...'
+it connects my specific experience to the company's exact needs and build trust. keep the text below 200 words. My experience:[paste here]. job.
+
+description:[paste here].
+
+
+
+
+prmopt6: interview preparation system
+
+i have an interview for the position of [position] in [comapny]. Give me : 8 most likely questions, a solid answer structures for each one using my experience, 
+and 2 intelligent questions that demonstrates strategic thnking.
+
+
+My experience : [paste here].
+
+prmpt 7: follow-up that reopens doors
+
+write a follow-up meesage for [apply / interview/networking conversation] with [name] in [company]
+
+reaffirms my fir in a single sentence, add a new contribution, and propose a clear a next step without sounding insistent
+
+
+
+-----------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
