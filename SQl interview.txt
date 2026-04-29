@@ -1,0 +1,1218 @@
+-- while craking complex qury always use WITH CTE while join , subquery
+
+use Inventory;
+--- follow crack concept youtube channel
+
+select * from Department;
+
+update Department
+set DName='Mysql1'
+where Did=1001;
+
+select dept.Did,dept.DName,dept.Description from Department as dept where Did=1001;
+
+select * from Employee;
+
+select emp.EmployeeId,emp.Did as 'Department Id',emp.EmpName as 'Employee Name',emp.Email from Employee emp;
+
+select emp.Gender from Employee as emp;
+
+-- select unique records
+select distinct emp.Gender from Employee as emp;
+
+select * from Employee;
+
+-- Runtime calculated column
+select emp.EmployeeId,emp.EmpName,emp.Salary*0.01 as HRA,(emp.Salary + emp.Salary * 0.01) as GS from Employee as emp;
+
+ --  cases statement with SQL -- want to add new column or existing column with condition
+ select
+	case
+		when emp.Gender='M' then 'Mr. '+emp.EmpName
+		when emp.Gender='F' then 'Ms.'+emp.EmpName
+	end as EmployeeName,
+ Gender from Employee emp;
+
+ -- here we added grade column in employee table
+
+ select emp.EmployeeId,emp.EmpName,emp.Gender,
+ case
+   when emp.Salary > 6000 then 'A'
+   when emp.Salary <= 6000 then 'B'
+  end as Grade
+ from Employee emp;
+
+ --------------------------------------------
+ -- Order by
+
+ select * from Employee emp order by emp.EmployeeId desc;
+ select * from Employee emp order by emp.Salary; 
+ select * from Employee emp order by emp.DOB;
+
+ -- single or multiple column
+ select * from Employee emp order by emp.Did,emp.Salary;
+
+ -- top , top with ties
+ -- highest salary of employee
+ -- first find highest salary
+ select * from Employee emp order by emp.Salary desc;
+ -- find highest means top
+ select top(1)* from Employee emp order by Salary desc;
+
+  -- but if we have two records whose salary is match to highest salary then we want to show
+  -- 2 records for that 'ties' is used
+
+ select top(1) with ties * from Employee emp order by emp.Salary desc;
+
+ -- Where =,<>(not equal),==,<,<=,>,>=, (condition)
+
+ select * from Employee emp where emp.Did=1001;
+
+ select * from Employee emp where emp.Salary > 6000;
+
+ -- Employee whose salary is not 6000
+ select * from Employee emp where emp.Salary <> 6000;
+
+ -- multiple or condition
+ -- Get employee whose empID is 1003 , 1008  , 1010
+ select * from Employee emp;
+ select * from Employee emp where emp.EmployeeId=1003 or emp.EmployeeId=1008 or emp.EmployeeId=1010;
+
+ -- In. Not in , Between , Not Between , Is null , Is not Null
+
+  -- for handling multiple or we used 'in' 
+ select * from Employee emp where emp.EmployeeId in (1003,1008,1010);
+
+ select * from Employee emp where emp.EmployeeId not in (1003,1008,1010);
+
+ -- between and used for finding range
+ select * from Employee emp where emp.EmployeeId between 1004 and 1007;
+
+  select * from Employee emp where emp.EmployeeId not between 1004 and 1007;
+
+  --  find records which is null
+  select * from Employee emp where emp.Did is null;
+
+ -- Like => %,[]
+
+ -- like is wildcard operator
+ -- all matching records where name start with p
+ select * from Employee emp where emp.EmpName like 'p%';
+
+ -- all  matching records where name end with k
+ select * from Employee emp where emp.EmpName like '%k';
+
+  -- all  matching records which contains p
+   select * from Employee emp where emp.EmpName like '%p%';
+
+    -- Searching using patteren and wildcards
+ -- to enable patteren "like" need to use
+ -- start with p
+ select * from Employee where EmpName like 'p%';
+
+ -- does not start with s
+ select * from Employee where EmpName like '[^s]%';
+
+ -- join data from two selects using union and union all
+ -- if we want to find unique records of two tables
+ select * from Department;
+ go
+ select * from Employee;
+
+ -- if you want to club two result set use union and union all
+
+ select dept.Did,dept.DName from Department dept
+ union all -- show all duplicate records
+ select emp.EmployeeId,emp.EmpName from Employee emp;
+ 
+ -- if we want to find unique records of two tables 
+ select dept.Did,dept.DName from Department dept
+ union  -- show unique records
+ select emp.EmployeeId,emp.EmpName from Employee emp;
+
+ -- rule 1: column no should be same for this table i.e column no are same here it is 2
+ -- rule 2: column datatype should be match to other table column datatype
+
+
+ -- soundex()
+
+ -- scalar functions
+ --  A scalar values functions is a function that takes one or more values but returs a single value
+
+ -- String Functions : Len(), Lower() , Ltrim() , Substring() ,String_Split()
+
+select emp.EmpName from Employee emp;
+
+select emp.EmpName,LEN(emp.EmpName) as 'Length' from Employee emp;
+
+select LOWER(emp.EmpName) as 'Employee Name' from Employee emp;
+
+select Upper(emp.EmpName) as 'Employee Name' from Employee emp;
+
+-- Ltrim() remove extra space of string from left side
+
+select LTRIM(emp.EmpName) as 'Employee Name' from Employee emp;
+
+select Ltrim('     Farukh') as 'Name';
+
+-- trim() removes extra space from both side
+select TRIM(emp.EmpName) as 'Employee Name' from Employee emp;
+select trim('     Farukh         ') as 'Name';
+
+-- substring()
+
+select ('Manzoor') as 'Name';
+select SUBSTRING('Manzoor',1,3) as 'Name';
+
+-- in department description more character to show in database we use substring
+select dept.Did,dept.DName,SUBSTRING(dept.Description,1,10)+' more...' as 'Descriptions' from Department dept;
+
+-- string.split()
+
+
+ -- Other Functions : Cast(), Convert() , IsNull() -- typecasting
+
+ select 1+'1' as 'Number'; -- output we get 2 bcoz second operator convert into int
+
+ select '1'+'a' as 'Number';
+
+ -- convert string to int in second operator
+ select '12' + CAST('23' as int) as 'Number'; 
+
+ select '12' + CAST(23 as varchar(50)) as 'Number'; 
+
+ -- convert is mostly used for datetime functions
+ -- here 103 represent date format dd/MM/yyyy you can check in w3 school 
+ select emp.EmpName,CONVERT(varchar(10),emp.DOB,103) from Employee emp;
+
+ select '12' + CONVERT(varchar(10),23);
+
+ -- isnull() assign some value which is null
+ -- here we assign 0 when empname is null
+ select emp.EmpName,ISNULL(emp.Did,0) from Employee emp;
+
+ -- 
+  select emp.EmpName,ISNULL(CAST(emp.Did as varchar(18)),'Not Assigned Yet') 
+  from Employee emp order by emp.Did;
+
+
+ -- DateTime Functions : getDate() ,year() , month() , day() , DateAdd() , Datediff(),
+--						Datepart(),DateName()
+
+-- current Date
+select GETDATE();
+
+-- Date Format MM/dd/yyyy
+select YEAR('12/23/2025') 'year';
+
+select YEAR(GETDATE());
+
+-- find last 2 digit of year
+SELECT SUBSTRING(CAST(YEAR(GETDATE()) AS VARCHAR), 3, 4) AS LastTwoDigitsOfYear;
+SELECT RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2) AS LastTwoDigitsOfYear;
+
+select MONTH(GETDATE()) 'Month';
+
+select emp.EmployeeId,emp.EmpName,MONTH(emp.DOB) as MOB from Employee emp;
+
+-- calculate age of current employee
+select DATEDIFF(YY,'11/06/1984',GETDATE());
+select DATEDIFF(YY,emp.DOB,GETDATE()) as 'Age' from Employee emp;
+
+-- Find youngest employee
+select DATEDIFF(YY,emp.DOB,GETDATE()) from Employee emp order by emp.DOB desc;
+
+SELECT TOP (1) WITH TIES 
+  *, 
+  DATEDIFF(YY, emp.DOB, GETDATE()) AS Age 
+FROM Employee emp 
+ORDER BY emp.DOB DESC;
+
+-- calculate for month now
+SELECT TOP (1) WITH TIES 
+  *, 
+  DATEDIFF(MM, emp.DOB, GETDATE()) AS 'Monthwise Age' 
+FROM Employee emp 
+ORDER BY emp.DOB DESC;
+
+select emp.EmployeeId,emp.EmpName,DATEDIFF(YY,emp.DOB,GETDATE()) as Age from Employee emp;
+
+-- Find all employees whose age greater than 30
+select emp.EmployeeId,emp.EmpName,DATEDIFF(YY,emp.DOB,GETDATE()) as Age from Employee emp
+where DATEDIFF(YY,emp.DOB,GETDATE())>30;
+
+-- Datediff() give you number in return where DateAdd() give you new Date
+
+-- when order placed today i want delivery in 3 days i.e delivery date
+select DATEADD(DD,3,GETDATE()) as 'Delivery Date';
+
+-- Find employee whose is retired Date after 57 age 
+
+select DATEADD(YY,57,emp.DOB) as 'Retired Date' from Employee emp;
+
+-- years of service left 
+
+select emp.EmployeeId,emp.EmpName,emp.DOB,DATEADD(DD,53,emp.DOB) as DOR,
+DATEDIFF(YY,GETDATE(), DATEADD(YY,53,emp.DOB)) as yearsOfServiceLeft from Employee emp;
+
+-- whose gonna retired first
+select TOP (1) WITH TIES 
+  *,DATEDIFF(YY,emp.DOB,GETDATE()) as Age,DATEADD(DD,53,emp.DOB) as DOR,
+DATEDIFF(YY,GETDATE(), DATEADD(YY,53,emp.DOB)) as yearsOfServiceLeft from Employee emp
+order by yearsOfServiceLeft;
+
+select DATEPART(MM,GETDATE()), DATENAME(MM,GETDATE()) ;
+select DATEPART(MM,GETDATE()), DATENAME(WEEKDAY,GETDATE()) ;
+
+-- find employes whose having birthday on this month
+select DATENAME(MONTH,emp.DOB) as MonthOfBirth,count(*) as NOE 
+from Employee emp group by  DATENAME(MONTH,emp.DOB);
+
+-- find employee who aged is 60 and find second top employee
+SELECT empName, DATEDIFF(YY, dob, GETDATE()) AS Age
+FROM tblEmployee
+WHERE DATEDIFF(YY, dob, GETDATE()) > 60  -- Cannot use 'Age' alias here
+ORDER BY Age DESC
+OFFSET 1 ROWS                           -- Skip the 1st (oldest)
+FETCH NEXT 1 ROWS ONLY;                 -- Take the 2nd one
+
+
+-- with CTE
+
+WITH EmployeeAge AS (
+    SELECT empName, DATEDIFF(YY, dob, GETDATE()) AS Age
+    FROM tblEmployee
+)
+SELECT * FROM EmployeeAge
+WHERE Age > 60
+ORDER BY Age DESC
+OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY;
+
+
+
+ -- Mathematical Functions : Ceiling() , Floor() , Round() , Rand()
+ select CEILING(2.3333);
+  -- output is  3 take top number here is 3
+
+ select ROUND(2.3333,2); --  second parameter denote decimal point i.e after . how many decimal here it is 2
+  -- output is 2.3300
+
+select ROUND(2.6663,2);
+ -- output is 2.6700
+
+ select RAND(); --  select any value between o and 1
+
+ -- select random value 1 to 10
+ select Floor(RAND()*10);
+ 
+ -- Aggregate Functions : Count() , Sum() , Avg() , Max() , Min()
+
+ select COUNT(*) from Employee;
+
+ select COUNT(emp.EmployeeId) from Employee emp;
+
+ -- count does not count null values
+ select Sum(emp.Salary) from Employee emp;
+
+ select avg(emp.Salary) from Employee emp;
+
+ select max(emp.Salary) from Employee emp;
+
+ select min(emp.Salary) from Employee emp;
+
+ -- find yougest employee 
+ select MAX(emp.DOB) from Employee emp;
+
+ -- find oldest employee
+ select Min(emp.DOB) from Employee emp;
+
+ ------------------------------------------------------------------------------
+ -- Group By
+ -- if we have combination of aggregate functions and column so that time i always says group by (column)
+ select distinct emp.Gender from Employee emp;
+
+ -- find no of males and females
+ select emp.Gender,COUNT(*) as NoOfEmp from Employee emp Group by emp.Gender;
+
+ select emp.Did,emp.Gender,COUNT(*) as NOE 
+ from Employee emp Group by emp.Did,emp.Gender
+ order by emp.Did;
+
+ -- for aggregate function can write conditin in having clause not in where clause
+ -- FWGHO (from -> where-> group by - > having -> order by)
+
+	select emp.Did,emp.Gender,COUNT(*) as NOE 
+	from Employee emp where emp.Did is not null
+	Group by emp.Did,emp.Gender
+	having Count(*)>10
+	order by emp.Did;
+
+	----------------------------------------------
+
+-- Joins (Multiplication)
+
+-- Joins : Used to extract data from multiple tables.
+-- Inner Join :
+    -- Get only the matched rows from left (child) and the right (master) table.
+-- Left Outer Join :
+   -- Get all the rows from left (child) and matched rows from the right (master) table.
+-- Right Outer Join
+   -- get only the matched rows from left (child) and all rows from the right (master) table.
+-- Full Outer Join
+   -- Get all rows from left and right
+
+-- Syntax
+
+select emp.EmployeeId,emp.EmpName,emp.Gender,emp.Email from Employee emp;
+select dept.Did,dept.DName,dept.Description from Department dept;
+
+select  emp.EmployeeId,emp.EmpName,emp.Gender,emp.Email,
+dept.Did,dept.DName,dept.Description
+from Employee emp inner join Department dept on emp.Did=dept.Did;
+
+select E.EmployeeId,E.EmpName,E.Salary,D.Did,D.DName,D.Description 
+from Employee E left outer join Department D
+on E.Did=D.Did;
+
+-- Find the number of employee in each department
+
+select dept.DName,COUNT(emp.EmployeeId) as NOE, AVG(emp.Salary) as 'Avg Salary' from Employee emp full outer join Department dept
+on emp.Did=dept.Did group by dept.DName;
+
+
+select dept.DName,COUNT(emp.EmployeeId) as NOE, AVG(emp.Salary) as AvgSalary from Employee emp full outer join Department dept
+on emp.Did=dept.Did group by dept.DName order by AvgSalary desc;
+
+select top (1) with ties dept.DName,COUNT(emp.EmployeeId) as NOE, AVG(emp.Salary) as AvgSalary from Employee emp full outer join Department dept
+on emp.Did=dept.Did group by dept.DName order by AvgSalary desc;
+
+
+-- joining multiple tables
+
+
+-- i have three table product , customer , order now i want to find customer who order or buy only 1 product of category
+
+select c.CustomerName,p.Category, count(o.ProductId) as TotalProducts
+from Customer c
+join Order o ON c.CustomerId=o.CustomerId
+join Product p ON c.ProductId = p.ProductId
+Group By c.CustomerName,p.Category
+Having Count(distinct p.Category) = 1;
+
+-- consider i have three table
+-- 1> Student = StudentId,Name,Gender
+-- 2> Subject = SubjectId,SubjectName
+-- 3> StudentSubjectMarks = StudentId, SubjectId , Marks
+
+--  select stud.StudenId, stud.Name, stud.Gender ,stud.StudentID,stud.Name  from StudentSubjectMarks  inner join
+--  Student stud on StudentSubjectMarks.StudentId = stud.StudentId
+--  inner join Subject sub on sub.SubjectId = StudentSubjectMarks.SubjectId;
+
+-- union : remove duplicate records . 
+
+-- rule 1> number of column should be match
+-- rule 2> column datatype should be match
+
+--select Name,Address,Contact from CustomerBuisnessA
+--union
+--select Name,Address,Contact from CustomerBuisnessA
+
+-- union All : takes all records 
+
+--select Name,Address,Contact from CustomerBuisnessA
+--union all
+--select Name,Address,Contact from CustomerBuisnessA
+
+-- intersect : gives common records
+--select Name,Address,Contact from CustomerBuisnessA
+--intersect
+--select Name,Address,Contact from CustomerBuisnessA
+
+-- subquries
+
+-- Question 1: Get the subject name which has got the highest marks (simple scalar subquery)
+
+-- select * from Subject where SubjectId in (101,103);
+
+-- select * from Subject where 
+-- SubjectId = (select top (1) with ties subjectId from StudentSubjectMarks order by Marks desc);
+
+-- Questions 2: Get the students who are taking Maths exam (Nested Scalar Subquery)
+-- select StudentId from StudentSubjectMarks
+-- where SubjectId = (select SubjectId from Subject where SubjectName='Maths')
+
+--select * from Student where StudentId in 
+--(select StudentId from StudentSubjectMarks
+--where SubjectId = (select SubjectId from Subject where SubjectName='Maths'))
+-- if we checked here select SubjectId from Subject where SubjectName='Maths' we get subjectid
+-- this assign to subjectId column of StudentSubjectMarks table
+
+-- Questions 3: Get the students who has not taken at least one exam (multivalued subquery)
+
+--select * from Student where StudentId in
+--(select studentId from StudentSubjectMarks where MArks is null);
+
+-- Correlated Subquery
+
+-- Get the employee details with lowest salary from every department.
+
+select * from Department dept;
+
+select MIN(emp.Salary) from Employee emp where emp.Did=1001;
+select MIN(emp.Salary) from Employee emp where emp.Did=1002;
+
+-- here is response we get salary we assign thi value salary column of employee table
+select * from Employee emp where emp.Salary 
+in (select MIN(emp.Salary) from Employee emp where emp.Did=1001);
+
+select * from Employee emp1 where emp1.Salary 
+in (select MIN(emp2.Salary) from Employee emp2 where emp2.Did=emp1.Did);
+
+-- second highest salary of department (co-related relation or bidreactional )
+select emp1.EmpName,emp1.Salary from Employee emp1 where
+2= (select COUNT(*) from Employee emp2 where emp1.Salary > emp2.Salary );
+
+-- Dump table data in to the new table (select into)
+
+--select * into tbl1 from Employee;
+
+-- insert records
+
+select * from Employee;
+
+-- delete from Employee where EmployeeId=1003;
+
+--insert into Employee(EmployeeId,EmpName,Gender,Salary,DOB,DOJ,IsActive,Did) values(1,'Fr','M',21/01/1997,21/2/2022,1,101);
+
+		--- DDL ---
+
+--create database Customer;
+
+--drop database Customer;
+
+--backup database Customer
+--to disk='d:\customer.bak';
+
+-- if you want to do from a SQL command.
+--RESTORE Database MyDb from DISK='C:\MyDb.BAK';
+
+-- create table
+create table tblCustomer(id int, name nvarchar(50));
+
+-- alter a table structure drop a existing column
+
+-- add column
+
+alter table tblCustomer 
+add age int;
+
+-- drop column
+
+alter table tblCustomer
+drop column age;
+
+-- alter a table structure change a existing column
+
+-- change datatypr of column
+
+alter table tblCustomer
+alter column name nvarchar(100);
+
+--adding validation constraints NOT NULL and UNIQUE
+-- constraints are validation which we apply on the data of a table
+
+create table tbl1
+(
+	id int unique,
+	name nvarchar(50) not null
+)
+
+-- check constraints for data value validation
+
+alter table tbl1
+add constraint constraint_check_less_5
+check (id<5)
+
+-- provide default values for a table
+alter table tbl1
+add constraint ismarried_default
+Default 0 for IsMarried   -- here 0 represent false
+
+-- create primary key and foreign key constraints
+
+create table Customer(
+	id int primary key,
+	customername varchar(20) not null
+);
+
+create table address(
+	id_fk int foreign key 
+	references Customer(id),
+	street1 nvarchar(50)
+)
+
+-- isnull(column1,column2) handle null first column is null then used second column
+
+select isnull(firstName,'first NULL') as names from tblCustomer; -- o/p first NULL if we found null in firstname
+
+select coalesce(firstName,surname,petname) as names from tblCustomer;
+-- same as isnull() but handle multiple argument
+
+
+			------------- Transaction ----
+
+-- Transaction helps out to group set of task , either all are sucessfull or all revert back
+--	Ex sender and receive account should be done or rollback
+use [Inventory];
+
+create table tblCustomer2(id int primary key,name nvarchar(40));
+
+drop table tblCustomer2;
+----------------------------------------------------
+begin try  -- start try
+	begin tran  -- start transaction
+		insert into tblCustomer2 values(2,'test2');
+		insert into tblCustomer2 values(1,'test1');
+
+		commit tran  -- to transaction
+end try -- end try
+begin catch
+	rollback tran;  -- to revert back
+	print 'Error occured '+ Error_MESSAGE(); -- show error message
+end catch
+---------------------------------------------------------
+select * from tblCustomer2;
+
+--delete from tblCustomer2;
+
+-- nexted transaction
+-- @@TRANCOUNT shows how deep you are in transaction nesting.
+begin tran t1
+insert into tblCustomer2 values(4,'test4');
+insert into tblCustomer2 values(5,'test5');
+save tran l1                  -- You can roll back to a savepoint instead of rolling back the entire transaction.
+	begin tran t2
+		insert into tblCustomer2 values(6,'test6');
+		insert into tblCustomer2 values(7,'test7');
+	save tran l2
+	print @@trancount  -- active transaction 2
+	commit tran t2 -- this does not physically commit
+	print @@trancount  -- active transaction 1
+	rollback tran l1  -- rollback to save tran l1    -- o/p show only test 4 and test 5 
+commit tran t1 -- this will do physically commit
+print @@trancount  -- active transaction 0 
+
+-- each and every commit transaction @@trancount value decreses
+
+
+-- Understanding concurrency and issues associated with it 
+
+-- two user trying to access same info
+
+begin tran
+	update tblCustomer2 set name='newtest'
+	where id=4;
+	waitfor delay '00:00:40'
+	update tblCustomer2 set name='newtest1'
+	where id=4;
+rollback tran
+------------------------------------
+select * from tblCustomer2;
+
+----  understanding and demonstrating Exclusive (X) locking
+-- above we give 10 sec we dont want anyone change this value or select value or delete value
+ -- i.e no access of insert , update ,delete until tran complete
+-- X   => Exclusive lock
+-- key => Row level lock
+-- understanding row level locking concept
+-- Read committed - Only sees committed data
+-- Read uncommitted mode . do not want to be in blocking mode .
+
+
+--Exclusive Lock (X) - The "Writers" Lock
+--When you run an UPDATE, INSERT, or DELETE, SQL Server automatically applies an Exclusive Lock to that row.
+
+--The Rule: Only one person can have an Exclusive lock on a piece of data at a time.
+
+--Behavior: If I am updating Row #4, you cannot update it, and you cannot even read it (unless you use a special hint like NOLOCK).
+-- for nolock used only when doesnt matter what don't care if the data is 100% final, just show me what's there right now,
+
+-- SELECT Price FROM tblProducts WITH (NOLOCK) WHERE id=4; -- here tbl
+
+ -- dirty reed : when user1 perform update only that time user2 read data then user2 get different value so avoid the while update exculsive lock apply
+ -- and no one read it (no share lock access) or update it 
+
+--Purpose: To prevent two people from changing the same value at the exact same millisecond, which would cause data corruption.
+
+--2. Shared Lock (S) - The "Readers" Lock
+--When you run a SELECT query, SQL Server applies a Shared Lock.
+
+--The Rule: Many people can hold Shared locks on the same data at the same time.
+
+--Behavior: If I am reading Row #4, you can also read Row #4. We are "sharing" the view.
+
+--Duration: By default (in "Read Committed" mode), a Shared lock is very short-lived. It is released as soon as the data is read.
+
+--The Conflict: If I am reading a row (Shared lock), and you try to update it (Exclusive lock), you have to wait until I am done reading.
+
+
+------------------------------------------------------------------------
+ -- dirty reed : when user1 perform update only that time user2 read data then user2 get different value so avoid the while update exculsive lock apply
+ -- and no one read it (no share lock access) or update it 
+
+
+select * from tblCustomer2 
+with (NOLOCK)  -- read uncomitted mode  doesnt matter what don't care if the data is 100% final, just show me what's there right now,
+where id=4;  -- for 40 sec we see value newtest whcih is present in transaction
+--------------------------------
+
+-- sp_lock and sp_who
+
+exec sp_lock
+exec sp_who
+
+
+-- Dead lock and demonstration of the same 
+
+-- two transaction block the progress of each other 
+
+-- Example -: if you check in below example tran1 id=4,5 and 
+--            tran2 id = 5,4  deadlock happen here after 30 sec
+
+-- trans 1														trans 2
+begin tran														begin tran
+	update tblCustomer2 set name='somedata'							update tblCustomer2 set name='somedata'
+	where id = 4;													where id = 5;
+	waitfor delay '00:00:30'										waitfor delay '00:00:30'
+	update tblCustomer2 set name='somedata'							update tblCustomer2 set name='somedata'
+	where id = 5;													where id = 4;
+commit tran														commit tran
+
+-- if we run both we get error deadlock on lock
+
+-- how to resolve deadlock
+-- 1> keep transaction time minimum  -- above we have 30 sec reduce it
+-- 2> keep logical chronological order  -- tran1 = id=4,5    trna2 = 4,5   keep logical order
+-- 3> use update lock
+-- blocking is different from dead lock
+
+-- update locks and how is different from shared lock
+-- update lock just before exclusive lock 
+-- update lock tells nobody will update this
+
+-- tran1
+
+begin tran
+	select * from tblCustomer2 with (uplock) where id=4
+	or id=5
+	update tblcustomer set name='somedata'
+	where id=4;
+	waitfor delay '00:00:20'
+	update tblCustomer2 set name='somedata'
+	where id=5;
+commit tran
+-----------------------------------------------------------------
+-- tran2
+begin tran
+	select * from tblCustomer2 with (uplock) where id=4
+	or id=5
+	update tblcustomer set name='somedata'
+	where id=5;
+	waitfor delay '00:00:20'
+	update tblCustomer2 set name='somedata'
+	where id=4;
+commit tran
+-------------------
+select * from tblCustomer2 where id=4;
+
+-- if we try to run both tran only tran1 is run another not run bcoz id 4,5 are already lock by tran1
+-- so tran2 is not run
+
+-- share lock is applied on select query not inside transaction just like update lock
+
+begin tran
+-- shared lock start here
+	select * from tblCustomer2 where id=4;
+-- shared lock end here
+waitfor ...
+commit tran
+
+
+-- shared lock are applied during select query
+-- when a record has shared lock
+
+-- other tracsaction can not 
+--1.update the records
+--2.delete that records 
+
+-- other transaction can 
+-- 1. select the records	
+
+
+-- intent lock
+
+-- I - intent lock
+-- intent lock is used by a transaction to inform other	transaction what is the locking intention in the below 
+-- hierarchy
+
+-- isolation level
+-- isolation level helps to isolate and control how other transaction will affect the current  transaction
+
+-- repetable read = trans commit every commit i get new data value
+--  Every time transaction reads he gets a different value
+-- dirty read  =  i get uncommitted value i.e uncommitted data is read
+-- phantom read = transaction search a records did not find it , searched again found the records
+
+
+-------------------------------------------------------------------------------------------------------
+ --Pessimistic Locking (The "Safe" Approach)This uses the Database Locks ($S$, $X$, $U$) we just discussed.
+ --You "hold" the lock for the entire duration of your business logic.How it works: 
+ --1.  User A reads a row with an UPDLOCK.
+    -- But if you know you are going to update that row in a second, you use UPDLOCK
+	-- It tells the database: "I'm just reading for now, but I'm about to update this, so don't let anyone else even start a shared lock here."
+	-- This prevents deadlocks before they even start.
+
+ --2.  The database blocks User B from even starting an update.
+ --3.  User A finishes their work and commits
+ --4.  Only then can User B access the row.Best for: High-conflict data (like a bank withdrawal or a "last 5 items in stock" flash sale).Downside: 
+ --It makes the application slow because people are constantly waiting in line (Blocking).
+
+
+
+-- 2. Optimistic Locking (The "Modern" Approach)
+--This does not use database locks while the user is thinking or typing. Instead, it uses a Version Number or a Timestamp.
+
+--How it works:
+
+--User A reads Row #4. The system notes that the Version is 1.
+
+--User A takes 5 minutes to type a new name. (No locks are held in the DB).
+
+--When User A clicks "Save," the app runs a query like this:
+--UPDATE tblCustomer SET Name='New', Version=2 WHERE id=4 AND Version=1
+
+--The Result: * If the row was updated by someone else, the Version would be 2, the WHERE clause would fail, and the app would say:
+-- "Someone else updated this while you were away!"
+
+--If no one touched it, the update succeeds.
+
+--Best for: Most web applications and Angular frontends where users might leave a screen open for a long time.
+
+--Downside: If two people do edit at the same time, the second person loses their work and has to start over.
+
+
+
+--Pessimistic Locking																	Optimistic Locking
+--Locked from Read until Commit.(Lock Timing)										no locked until save
+
+--SQL Locks ($S, X, U$).																Versioning / RowVersion / Timestamps.
+--share lock - read
+--exclusive lock - write
+--updlock - no one should write it until complete my work
+
+--User waits (Loading spinner).												User gets an error message on Save.
+
+--Lower (due to blocking).														Higher (no blocking).
+
+
+ ------------------------------- ACID Properties ---------------------------------------
+ --1. Atomicity (The "Switch")
+--The Focus: The Action.
+
+--The Idea: It’s like a light switch; it’s either ON or OFF.
+
+--Simple View: If you are moving money from Bank Account A to Bank Account B, you can't just subtract from A and "forget" to add to B. It’s both or neither.
+
+--2. Consistency (The "Rules")
+--The Focus: The Database Integrity.
+
+--The Idea: The database must follow the rules (Constraints).
+
+--Simple View: If your table has a rule that "Balance cannot be negative," and a transaction tries to take more money than you have, Consistency steps in and says "Stop! This breaks the rules, rollback now."
+
+--3. Isolation (The "Privacy")
+--The Focus: The Traffic Jam.
+
+--The Idea: Even if 1,000 people are buying the same concert ticket at the same time, the database treats each person as if they are the only one there.
+
+--Simple View: Transaction A shouldn't be able to "see" what Transaction B is doing until Transaction B is totally finished.
+
+--4. Durability (The "Hard Drive")
+--The Focus: The Safety.
+
+--The Idea: Once the "Success" message pops up, that data is safe even if the building loses power one second later.
+
+--Simple View: The data isn't just sitting in the "RAM" (temporary memory); it has been written to the physical disk (the log files).
+
+
+--ACID 
+--Atomicity = all in one if bankA trnasfer money to bankB failed them amount substraction from BankA should be rollback against
+--Conssitency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
+--Isolation = when transaction from bank A to bankB perform no one should stop ir not gonna impact from outside
+--Durability = transaction donw then save it
+
+ ----------------------------------------------------------------------------------------------------
+ -- 1> Atomicity : required that tracsaction that involves two or more discrete parts of information  must commit 
+ --                  all parts or more
+  -- Ex: begin tran , commit tran
+
+ -- 2> Consistency : required that transaction must create a valid state of new data, or it must rollback
+ --                    all data to the state that existed before the transaction was executed
+ -- ex : begin tran , save tran
+
+ -- 3> Isolation : required that a transaction that is still running and did not commit all data yet , must stay 
+ --					isolated from all other transactions
+ -- isolation level
+
+ -- 4> Durability : required that committed data must be stored using method that will preserve all data 
+ --					in correct state and avilable to user , even in the case of a failure  
+--  backup , commit 
+
+--Atomicity → All or nothing.
+
+--Consistency → Data integrity preserved.
+
+--Isolation → Transactions don’t step on each other.
+
+--Durability → Once saved, always saved.
+
+
+----------------------------------------------------------------------------------------
+		--	Row Number , partition rank() and dense rank()
+
+create table tblcustomer(id int primary key , CustomerName nvarchar(50), ProductName nvarchar(50),
+Amount DECIMAL(10,2),VendorName nvarchar(50)); 
+
+insert into tblCustomer values(1,'Shiv','Shoes',100.24,'Archies');
+insert into tblCustomer values(2,'Raju','Bag',203.24,'Archies');
+insert into tblCustomer values(3,'Sukesh','Perfumes',102.24,'Archies');
+insert into tblCustomer values(4,'Rajendra','Books',119.24,'Bata');
+insert into tblCustomer values(5,'Rajendra','Pens',302.24,'Bata');
+
+--delete from tblCustomer;
+
+-- row_number() added extra column  assign unique value to row
+select row_number() over (order by cust.CustomerName) as orderNumber, 
+cust.id,
+cust.CustomerName,
+cust.ProductName,
+cust.Amount,
+cust.VendorName from tblcustomer cust;
+
+-- partition on - apply order using partition and assign number
+
+select 
+row_number() over (order by cust.CustomerName) as orderNumber, 
+row_number() over (partition by cust.VendorName order by cust.VendorName) as VendorNumber, 
+cust.id,
+cust.CustomerName,
+cust.ProductName,
+cust.Amount,
+cust.VendorName from tblcustomer cust;
+
+
+-- rank()  and dense_rank()
+--  for repeat records it generate same number 
+
+select 
+row_number() over (order by cust.CustomerName) as orderNumber, 
+row_number() over (partition by cust.VendorName order by cust.VendorName) as VendorNumber, 
+rank() over (order by cust.CustomerName) as customernumber,
+cust.id,
+cust.CustomerName,
+cust.ProductName,
+cust.Amount,
+cust.VendorName from tblcustomer cust;
+-------------------------------------------------------------
+
+select 
+row_number() over (order by cust.CustomerName) as orderNumber, 
+row_number() over (partition by cust.VendorName order by cust.VendorName) as VendorNumber, 
+dense_rank() over (order by cust.CustomerName) as customernumber,
+cust.id,
+cust.CustomerName,
+cust.ProductName,
+cust.Amount,
+cust.VendorName from tblcustomer cust;
+
+--------------------------------------------------------------------------------------------------------
+
+----------------------------------- Triggers ---------------------------
+
+-- run logice before (instead of trigger) or after (after trigger) query i.e inser, update,delete
+
+-- after trigger
+create trigger TriggerUpdate
+ on tblcustomer  -- table name
+ after insert,update,delete  -- action
+as
+Begin 
+  insert into tblAudit(LastupdatedTime) values(GetDate());
+End
+
+
+--  if we are trying to add new records in tblCustomer or any table this trigger 
+select * from tblAudit;
+
+------------------------------------------------------------------------------
+
+alter trigger TrigerInsteadOf
+ on tblcustomer
+ instead of insert
+As
+
+Begin 
+	declare @customerName varchar(50)
+	-- select the values
+	select @customerName=customerName from inserted
+	-- check of the customer name value
+	if(LEN(@customerName)<>0)
+	begin
+	--	Everything fine insert in 
+		insert into tblCustomer
+		select * from inserted
+	end
+End
+
+----------------------------------------------------------
+
+create trigger trgAfter
+	on tblcustomer
+	After Insert
+As
+Begin
+	declare @id int
+	select @id=customerId from inserted
+	update tblCustomer set Total=Qty*PerProduct where CustomerId=@id
+
+End
+
+
+---------------------------------------------------------------------------------------
+
+---------- Stored Procedure --------------
+-- normal Query -> 
+--  1> syntax cheak
+--  2> plan selected
+--  3> query execution
+
+-- Stored Procedure Query -> 
+--  1> syntax cheak
+--  2> plan selected
+--  3> stored in cache
+--  4> getting from cache and then query execution
+
+-- Advantages of stored procedure
+-- 1> performance- > first time syntax checked and after click to execute plan selected 
+--    and stored in cached then in subsequent call it getting from cached not cheking again syntax and 
+--    plan execute save time 
+
+-- 2> code centralize -> does not neeed to change in multiple time 
+
+select * from [dbo].[tblCustomer2] where name='test4';
+
+insert into tblCustomer2(id,name) values(6,'Farukh shaikh');
+
+create or alter procedure GetLastName
+	@Name nvarchar(max)
+As 
+Begin
+	set nocount on
+	declare @firstName nvarchar(max);
+	declare @lastName nvarchar(max);
+	 -- Create a temp table first
+    -- Split the name into a temp table
+    SELECT value INTO #temp1 
+    FROM string_split(@Name,' ');
+	 -- Get the last name (everything except first word)
+    --SELECT @lastName = STRING_AGG(value, ' ')
+	SELECT *
+    FROM #temp1
+    WHERE value NOT IN (SELECT TOP 1 value FROM #temp1 ORDER BY (SELECT NULL));
+
+    -- Return results
+    SELECT @firstName AS FirstName, @lastName AS LastName;
+	
+End
+
+EXEC GetLastName @Name = 'Farukh shaikh';
+
+
+------------------------------------------------------
+
+create or alter proc SelectCustomer
+	-- input parameter
+	@CustomerName nvarchar(max),
+	@CustomerId int,
+	@CurrentDateTime datetime  -- output parameter
+As
+Begin
+	set @CurrentDateTime = GetDate()
+	select * from tblCustomer2 where CustomerName = @CustomerName
+	and CustomerId=@CustomerId
+	return @@rowcount
+End
+
+-------------
+declare @Datetimecurrent datetime
+declare @myrowcount int
+exec @myrowcount = SelectCustomer 'xyz',123,@Datetimecurrent output
+print @Datetimecurrent
+print @myrowcount
+
+
+---------------------------------------------------------------
+
+-- SQL Server Agent helps to run job after a specific interval of time. In a SQL Server agent job we can 
+-- have series of steps 
+
+-- Job Activity monitor helps to monitor abouth the progress and history of how the job ran
+
+
+-------------------------------------------------------------------------
+
+create table EmployeeTemp(EmployeeSalary varchar(30));
+
+INSERT INTO EmployeeTemp
+VALUES (3000),
+       (4000),
+       (1000),
+       (100);
+
+select EmployeeSalary from EmployeeTemp;  -- outer query
+
+select count(*) from EmployeeTemp
+   where 3000 <= EmployeeSalary
+
+-- Final Query to find nth highest salary
+
+select EmployeeSalary from EmployeeTemp t1 where 2=
+(select count(*) from EmployeeTemp t2 where t1.EmployeeSalary <= t2.EmployeeSalary);
+
+-- make parametric
+
+declare @nth int
+set @nth=1
+select EmployeeSalary from EmployeeTemp t1 where @nth=
+(select count(*) from EmployeeTemp t2 where t1.EmployeeSalary <= t2.EmployeeSalary);
+
+------------------------------------------------------------------------------------
+
+select distinct(EmployeeSalary) from EmployeeTemp
+order by EmployeeSalary desc
+offset 2 rows  -- start with index 0
+fetch next 1 rows only;
+
+---------------------------------------------------------------------------------
+
+----------  CTE (common table Expression) --------------------
+-- CTE is a temporary result set which can be used in the subsequest  execution scope only once
+
+-- Example 
+
+WITH Sales_CTE as
+(                                    -- temporary result set
+	select  [EmpName],
+	[Gender] , [Email]
+	from 
+	tblEmployee
+)
+select * from Sales_CTE;
+
+-- note : after creation of CTE , in the same subsequent context you can execute multiple times 
+--        if the context  changes you (another query seperate) can not use it any more 
+
+-- CTE mostly use for recursive
+
+with recursiveCTE as
+(
+	select 1 as n 
+	union all
+	select n+1 from recursiveCTE where n<3
+)
+select * from recursiveCTE;
+
+-------------------------------------------
+
+with cte as
+(
+	select * from tblCustomer
+)
+insert into tblCustomer values(7,'test',100,null);
+
+-- we can perform insert , update in CTE and its affect the table physically.
+
+-------------------------------------------------------------------------------------
+								-- Temp  table  --------
+-- temporary tables are physical table which gets created for session . 
+-- once the session is closed temporary table is dropped  
+
+create table #tblProducts(
+	product_name varchar(max),
+	list_price DEC(10,2)
+);
+insert into #tblProducts values('shoes',100.23)
+select * from #tblProducts;
+
+-- Quest : temp tables vs CTE
+									-- temp table					CTE
+-- 1: where are they created?   :   physially inside SQl Server		Memory
+-- 2: whats the lifetime?		:	until the session closed		subsequent context
+-- 3: when to use?				:	store temporary data			Recursive
+
+
+
+-- Pagination in SQL
+
+SELECT EmpId, EmpName, Salary
+FROM Employees
+ORDER BY EmpId -- Order By is MANDATORY for pagination
+OFFSET 0 ROWS      -- Skip these many rows
+FETCH NEXT 10 ROWS ONLY; -- Take only these many
+
+
+-- if you want to delete unique records
+with uniquerecords as
+(
+	select row_number() over (partition by name order by name)
+	as Id,name from tblName
+)
+select * from uniquerecords where id>1; -- This shows ONLY the duplicates
+
+----------------------------------------------------------------------------
+
+
+ -- Quest - How to optimize query
+ -- Check Indexes: Ensure WHERE and JOIN columns are indexed.
+
+--SARGability: Don't use functions on columns in the WHERE clause.
+
+--No SELECT *: Only pull required columns.
+
+--Execution Plan: Use tools to find "Scans" vs "Seeks."
+
+--Batching: For huge updates, do them in small chunks (e.g., 5000 rows at a time) to avoid locking the whole table
+
+------------------------------------------------------------------------------------------------------------
+
+--quest > optimize stored procedure
+
+--SET NOCOUNT ON: Reduces network traffic by stopping SQL from sending "rows affected" messages after every statement.
+
+--Use Try-Catch: Provides structured error handling and ensures transactions are safely rolled back if a failure occurs.
+
+--Select Specific Columns: Improves performance and memory usage by avoiding SELECT * and allowing for covering indexes.
+
+--Use EXISTS instead of IN: Speeds up queries by using "short-circuit" logic that stops searching as soon as the first match is found.
+
+--Schema Prefixing: Always use dbo.TableName to help SQL Server jump directly to the object without searching the schema list.
+
+--Avoid Cursors: Use set-based logic (JOINs/Updates) instead of row-by-row loops to take advantage of SQL's parallel processing.
+
+--Parameter Sniffing: Use local variables or RECOMPILE hints to prevent SQL from using an inefficient execution plan for specific parameters.
+
+--Temporary Tables vs Variables: Use #TempTables for large datasets to allow indexing, and @TableVariables for small datasets to save memory.
+
+--SARGable Queries: Avoid using functions (like YEAR() or LEFT()) on columns in the WHERE clause so SQL can use the B-Tree index.
+
+--Update Statistics: Regularly update database statistics so the Query Optimizer has accurate information to choose the fastest path.
