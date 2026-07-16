@@ -82,9 +82,19 @@ steps to create JWT Token ?
 
 
 * Http 401 is the status code which represent to unauthorised access .
+
+	return Unauthorized("Invalid credentials");
 	Ex: return StatusCodes(StatusCodes.Status401Unauthorized,'Invalid Credentials');
+	
+	Examples:
+
+	No JWT token
+	Expired JWT token
+	Invalid JWT token
+	Wrong username/password during login
 
 * Http 403 when use dont have rights
+ - The user is authenticated, but does not have permission to access the resource.
 
 * Token is checked in the middleware by Jwtbearer Class .
 * JWT Token authentication is only applied to controller who have authorized Attribute decorated . i.e [Authorize]
@@ -96,14 +106,129 @@ steps to create JWT Token ?
 "Authorization : Bearer <token>"
 
 
-
-
 * Now every api this token is passed by adding those code in HttpInterceptor
 
+Q1. Why use HttpInterceptor?
+
+Answer
+
+To intercept every HTTP request and response. Common uses include:
+
+Add JWT token
+Logging
+Global error handling
+Loading spinner
+Request/response modification
+
+Q2. Why store the token in localStorage?
+
+Common answer:
+
+So it persists after a page refresh.
+The interceptor can read it and attach it to every request.
+
+(For highly secure applications, cookies with HttpOnly are often preferred over localStorage to reduce XSS risk.)
+
+-  HttpRequest objects are immutable (read-only). We cannot modify the original request, 
+so we create a cloned request and add the Authorization header to the cloned request before forwarding it.
+
 Ex:
-  const authReq = token 
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { HttpInterceptorFn,HttpErrorResponse } from '@angular/common/http';
+import { catchError } from 'rxjs/operators';
+import { throwError } from 'rxjs';
+
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  // inject Router here
+  const router = inject(Router);
+  // get token here
+  const token = localStorage.getItem('token');
+
+  const authReq = token
+    ? req.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`
+        }
+      })
     : req;
+
+  return next(authReq).pipe(
+
+    catchError((error: HttpErrorResponse) => {
+
+      if (error.status === 401) {
+
+        // Remove expired token
+        localStorage.removeItem('token');
+
+        // Redirect to login page
+        router.navigate(['/login']);
+      }
+
+      return throwError(() => error);
+
+    })
+
+  );
+
+};
+
+ then register inside app.config.ts
+ 
+ 
+  providers: [
+    provideHttpClient(
+      withInterceptors([
+        authInterceptor
+      ])
+    )
+  ]
+
+
+ note -: instead  of passing token direct now we use cookies.httponly from server side and angular can read it below code
+ 
+When using HttpOnly cookies, the interceptor does not add an Authorization header.
+Instead, it ensures cookies are included with requests:
+
+import {
+  HttpInterceptorFn
+} from '@angular/common/http';
+
+export const authInterceptor: HttpInterceptorFn =
+(req, next) => {
+
+  const authReq = req.clone({
+      withCredentials: true
+  });
+
+  return next(authReq);
+};
+
+
+Questions -> localStorage vs HttpOnly Cookie
+
+| localStorage                                 | HttpOnly Cookie                        |
+| -------------------------------------------- | -------------------------------------- |
+| Angular can read it                          | Angular cannot read it                 |
+| Angular manually adds `Authorization` header | Browser automatically sends the cookie |
+| Vulnerable to XSS attacks                    | Protected from JavaScript access       |
+| Easier to implement                          | Requires backend cookie configuration  |
+
+
+Which One Should You Use?
+
+For most enterprise applications:
+
+JWT in HttpOnly cookies is preferred for better protection against XSS.
+If using cookies, you should also understand and mitigate CSRF (for example, using anti-forgery tokens or appropriate SameSite settings).
+
+
+Interviewer: How do you read an HttpOnly cookie in Angular?
+Correct Answer:
+You can't. An HttpOnly cookie is intentionally inaccessible to JavaScript. The browser stores it and automatically includes it in requests to the server.
+ Angular only needs to send requests with withCredentials: true when required.
+
 
 Question : after login successfull you go to dashboard if you click back button you are goin back to login page again we dont want that ?
 The "Login → Dashboard" Pattern
@@ -111,6 +236,50 @@ This is the classic real-world use case. After authentication, you don't want us
 
 // Inside login component after successful auth
 this.router.navigate(['/dashboard'], { replaceUrl: true });
+
+
+Suppose the user manually enters:
+http://localhost:4200/login
+
+Create a guard for the login route.
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LoginGuard implements CanActivate {
+
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  canActivate(): boolean {
+
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/dashboard']);
+      return false;
+    }
+
+    return true;
+  }
+}
+
+
+Route:
+
+{
+  path: 'login',
+  component: LoginComponent,
+  canActivate: [LoginGuard]  // add RouteGuard here
+}
+
+
+Now:
+
+Logged-in user → cannot access /login.
+Back button won't show the login page because of replaceUrl.
+Even typing /login manually redirects to the dashboard.
+
 
 
 Question: Access Token vs Refresh Token ?
@@ -124,25 +293,84 @@ Question: Access Token vs Refresh Token ?
 				Client												Server
 		
 				|	1. username and password passed						|
-				|---------------------------------------------------	|
+				|-------------------->-------->-------->---------------	|
 				|														|
-				|----------------------------------------------------	|
+				|----------<---------<---------------------------------	|
 				|   2. get Jwt token and Refresh Token(RT)				|
 				|														|
 				|---------------------------------------------------	|
 				|	3. next api only jwt token passed not RT			|
 				|														|
-				|----------------------------------------------------	|
+				|--------->------------------->------------------------	|
 				|    4. get authorized data								|
 				|														|
-				|-----------------------------------------------------	|
+				|----------<---------------------<---------------------	|
 				|   5. if token expired get 401 error					|
 				|														|
-				|-----------------------------------------------------	|
+				|---------->------------------->------------------------	|
 				|	6.  pass Refresh token (RT) to api					|
 				|														|
 				|------------------------------------------------------	|
 				|	7. get new token and new refresh token (RT)			|
+				
+				
+in Angular 
+
+Auth Service
+
+
+refreshToken() {
+
+   return this.http.post<any>(
+      '/api/auth/refresh-token',
+      {},
+      {
+        withCredentials:true // get token with cookies.httponly
+      });
+
+}
+
+Interceptor
+
+
+return next(authReq).pipe(
+
+   catchError((error)=>{
+
+      if(error.status===401){
+
+          return authService.refreshToken().pipe(
+
+             switchMap((response)=>{
+
+                localStorage.setItem(
+                    'token',
+                    response.accessToken
+                );
+
+                const retryRequest =
+                    req.clone({
+
+                     setHeaders:{
+                        Authorization:
+                        `Bearer ${response.accessToken}`
+                     }
+
+                    });
+
+                return next(retryRequest);
+
+             })
+
+          );
+
+      }
+
+      return throwError(()=>error);
+
+   })
+
+);
 				|
 				
 Note -: Expiry time of Refresh Token is more than Access Token .
@@ -166,9 +394,10 @@ so in httpinterceptor
   });
 
 
-below all are protocol to comminunate through cline tand server .
+below all are protocol to communicate through clinet and server .
 
-open ID (who is user i.e Authentication) -  we have Authorization server (like azure Active directory like azure b2c , social website authentication not authorization like google , facebook like sso)
+open ID (who is user i.e Authentication) -  we have Authorization server (like azure Active directory like azure b2c , social website authentication not authorization like google , 
+facebook like sso)
  tried to explain who is the user (authentication like register user using this ) and Resource server (our project)
  -  we just need to check user is existed in your system or not like shopping sites and mobile application ,single sign etc
  
@@ -188,7 +417,7 @@ If yes → log them in. If no → create a new account.
  
  
  
-OAuth (what kind of rights user has i.e Authorization) - when token create users and roles also  for communication of cline tand server 
+OAuth (what kind of rights user has i.e Authorization) - when token create users and roles also  for communication of client and server 
  - When third party application tried to access resources 
 
 
@@ -439,14 +668,6 @@ in html routeLink check menuItems
   </li>
 </ul>
 
-
-
-
- 
- 
-
-
-
 ------------------------------------------------
 find target of particular array
 
@@ -500,7 +721,7 @@ select count(*) from tblEmployee t2 where t1.Salary <= t2.Salary;
 
 -----------------------------------
 
-storred procedure syntax :
+stored procedure syntax :
 
 create proc <procedure_name>
 @id int,
@@ -533,6 +754,98 @@ create table tbl2(id_fk int references tbl(id))
 
 -----------------------------
 
+What is a Design Pattern?
+A Design Pattern is a reusable solution to a commonly occurring software design problem. It is not code, but a proven way of structuring classes and objects.
+
+Interview Definition:
+
+A design pattern is a reusable, well-tested solution to a common software design problem. It provides a standard approach to designing software but is not a ready-made implementation.
+
+Types of Design Patterns
+1. Creational Patterns
+----------------------
+Purpose: How objects are created.
+
+| Pattern          | Purpose                                         |
+| ---------------- | ----------------------------------------------- |
+| Singleton        | Only one object exists                          |
+| Factory Method   | Object creation delegated to subclasses/factory |
+| Abstract Factory | Creates families of related objects             |
+| Builder          | Builds complex objects step by step             |
+| Prototype        | Creates objects by cloning                      |
+
+
+2. Structural Patterns
+----------------------
+Purpose: How classes and objects are organized.
+
+| Pattern   | Purpose                                        |
+| --------- | ---------------------------------------------- |
+| Adapter   | Makes incompatible interfaces work together    |
+| Decorator | Adds functionality without modifying the class |
+| Facade    | Provides a simplified interface                |
+| Composite | Represents tree structures                     |
+| Proxy     | Controls access to an object                   |
+| Bridge    | Separates abstraction from implementation      |
+| Flyweight | Shares objects to reduce memory usage          |
+
+
+3. Behavioral Patterns
+Purpose: How objects communicate.
+
+| Pattern                 | Purpose                                   |
+| ----------------------- | ----------------------------------------- |
+| Observer                | One-to-many notifications                 |
+| Strategy                | Different algorithms at runtime           |
+| Command                 | Encapsulates a request as an object       |
+| State                   | Changes behavior based on state           |
+| Chain of Responsibility | Passes a request through handlers         |
+| Mediator                | Centralizes communication                 |
+| Iterator                | Sequential traversal                      |
+| Template Method         | Defines algorithm skeleton                |
+| Visitor                 | Adds operations without modifying classes |
+| Memento                 | Saves and restores object state           |
+| Interpreter             | Evaluates language grammar                |
+
+
+
+Q1. What are the categories of Design Patterns?
+
+Answer:
+
+Creational
+Structural
+Behavioral
+
+Q3. Which design patterns do you use in ASP.NET Core?
+
+
+If an interviewer asks: "What problem does the Factory pattern solve?", give them this 3-point answer:
+
+Suppose you don't use a factory.
+
+if (gateway == "paypal")
+{
+    var payment = new PaypalGateway();
+}
+else if (gateway == "stripe")
+{
+    var payment = new StripeGateway();
+}
+else
+{
+    var payment = new CreditCardGateway();
+}
+
+Problems:
+
+❌ Controller knows all concrete classes.
+❌ Every new gateway requires changing the controller.
+❌ Violates the Open/Closed Principle.
+❌ Tight coupling.
+if we want to add new payment gateway one more condition added here so complexity increses
+
+The Factory Pattern removes this problem.
 
 The Factory Pattern is a Creational Design Pattern that provides 
 an interface for creating objects but allows a dedicated Factory class to decide which concrete class to instantiate at runtime.
@@ -543,6 +856,11 @@ public interface IPaymentGateway
 {
    void ProcessPayment(decimal amount);
 }
+
+Why?
+
+Every payment gateway should expose the same method.
+
 
 step 2> implement in concrete class
 
@@ -568,6 +886,8 @@ public class  StripeGateway : IPaymentGateway
 
 // CreditcardGateway.cs
 
+Each gateway has its own implementation.
+
 
 step 3> create Factory patteren This class uses IServiceProvider to dynamically pull the right object from the .NET DI container.
 
@@ -577,6 +897,20 @@ public interface IPaymentGatewayFactory
 {
 	IPaymentGateway getPaymentGetway(string gateway);
 }
+
+
+Notice
+
+Factory always returns
+
+IPaymentGateway
+
+no 
+
+PaypalGateway
+
+StripeGateway
+
 
 // PaymentGatewayFactory.cs
 
@@ -654,9 +988,24 @@ public class PaymentController : ControllerBase
 }
 
 
+Diagram
+
+                 Controller
+                      │
+                      ▼
+         IPaymentGatewayFactory
+                      │
+         ------------------------
+         │                      │
+         ▼                      ▼
+ PaypalGateway          StripeGateway
+         │                      │
+         └──────────────┬───────┘
+                        ▼
+              IPaymentGateway
 
 
-If an interviewer asks: "What problem does the Factory pattern solve?", give them this 3-point answer:
+
 
 Centralization: "It centralizes object creation logic. If we need to change how a PaymentGateway is created, we only change it in the Factory, not across the entire application."
 
@@ -666,8 +1015,27 @@ Extensibility: "It makes the code Open for Extension but Closed for Modification
  without ever touching the existing Order or Checkout logic."
 
 
+Q1. Why Factory Pattern?
+Answer
+Factory Pattern centralizes object creation. The client requests an object from the factory instead of creating concrete classes directly. 
+This reduces coupling and makes the application easier to extend.
 
 
+Q2. Why return an interface instead of a concrete class?
+Answer
+Because the controller should depend on an abstraction (IPaymentGateway) rather than a specific implementation (PaypalGateway). This follows the Dependency Inversion Principle.
+
+
+Q3. Why use IServiceProvider?
+Answer
+Because it lets the DI container construct the object, automatically resolving any dependencies such as ILogger, HttpClient, or DbContext. 
+The factory doesn't need to know how to build the object.
+
+
+Q4. Which SOLID principles are used?
+Open/Closed Principle – Add new gateways without changing the controller.
+Dependency Inversion Principle – Depend on IPaymentGateway, not concrete classes.
+Single Responsibility Principle – The controller handles requests, while the factory handles object creation.
 
  -----------------------------------------------------------------------------------------------------------------------------
  
@@ -900,13 +1268,56 @@ var item = await query.OrderBy(e=>e.Eid)
                 .ToListAsync();
 				
 -------------------------------------------------------------------------------------------------------
-	Pagination Query
+Step 1: Create Pagination Model
 
-var item = await query.orderBy(a=>a.Eid)
-					.skip((pagination.pageNumber - 1)*(pagination.PageSize)) // skip records of previous page where it should start with 1 not 0
-					.Take(pagination.pageSize)
-					.ToListAsync();	
-	
+public class Pagination
+{
+    // Default page = 1
+    public int PageNumber { get; set; } = 1;
+
+    // Default page size = 10
+    public int PageSize { get; set; } = 10;
+}
+
+Step 2: API Request
+
+GET /api/employees?pageNumber=2&pageSize=5
+
+Model Binding automatically creates:
+
+PageNumber = 2
+
+PageSize = 5
+
+Step 3: Repository
+
+public async Task<List<Employee>> GetEmployees(Pagination pagination)
+{
+    return await _context.Employees
+
+        .OrderBy(e => e.Id)
+
+        .Skip((pagination.PageNumber - 1) * pagination.PageSize) // skip records of previous page where it should start with 1 not 0
+
+        .Take(pagination.PageSize)
+
+        .ToListAsync();
+}
+
+
+Step 4: Controller
+
+[HttpGet]
+public async Task<IActionResult> GetEmployees(
+    [FromQuery] Pagination pagination)
+{
+    var employees =
+        await _employeeRepository.GetEmployees(pagination);
+
+    return Ok(employees);
+}
+
+
 -------------------------------------------------------------------------------------------------------
 	Question 11> Find second larget element in an array
 	int[] numbers = { 5, 10, 8, 10, 2, 1, 15, 15 };
@@ -921,14 +1332,32 @@ var item = await query.orderBy(a=>a.Eid)
 	Query 11> sorting in Array
 	
 	
-	----------------------------------------------
+-------------------------------------------------------
+
+												Introduction
+											------------------------
 	
-	i have work on microservices project where we have multiple project  Los service (getting file from blob storage),indexing (using AI assign indexing to this file),
+
+Tell me about yousrself ?
+
+Good morning. My name is Umarfarukh Shaikh. I am currently working at Suma Soft as a Full Stack Developer and have around 4 years of experience in software development.
+My primary skills are Angular, TypeScript, ASP.NET Core, SQL Server, and Azure. I completed my Bachelor's degree in Computer Science from MIT College, Pune.
+Currently, I am looking for an opportunity where I can work on challenging projects, enhance my full-stack development skills, and grow professionally to become expert in this field.
+	
+	
+tell me about your project
+
+Msuite :
+	
+	i have work on microservices project where we have multiple project module  
+	Los service (getting file from blob storage),
+	indexing (using AI assign indexing to this file),
 	versioning(using AI document created version)
    Document classifications (when agent manually check document and its version it can drag and drop reclassify and reorder in Angular perform redo and undo operation),
    Data  extraction (what ever pdf file shows number like amount check validate by agent by pdf viwer i.e check amount is in $ or not adding filed ,adding entity , adding source
-     i.e Address entity check permant address m address validate) ,  rule validators (where Testing manually check it following certain rule or not)
- so specially i have worked on two project Document classification and data extraction and and loan global page where we see each customer having borrower loan 	 
+     i.e Address entity check permant address m address validate) , 
+   rule validators (where Testing manually check it following certain rule or not)
+ so specially i have worked on two project Module Document classification and data extraction and and loan global page where we see each customer having borrower loan 	 
 
 Built on a microservices architecture, the project leverages AI-driven engines to automatically index over 350 document types and 
 extract critical financial data with up to 98% accuracy
@@ -949,7 +1378,8 @@ Loan Global Page: Designed a centralized dashboard to support "one-touch" operat
 .
 Microservices Architecture: Managed services for LOS (Blob Storage) and AI-driven Versioning to ensure data consistency across the multi-million dollar loan lifecycle
 
-------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+
 Extension class :  it gives extra feature to existing datatype class 
 ---------------
 
@@ -966,7 +1396,9 @@ public static class ExtensionClass
 
 ----------------------------------------
 
-Exception - unhandled error occur which stop application for running handling exception
+Exception - unhandled error occur which stop application for running handling exception . Exception is class
+
+User define custom exception  : 
 
 class InValidDenomenator: Exception
 {
@@ -1008,7 +1440,6 @@ finally
 }
 
 
-
 --------------------------------------------------------
 to increase api speed
 async and await code = perform asynchronous calling using async and await (context switching)
@@ -1016,7 +1447,6 @@ async and await code = perform asynchronous calling using async and await (conte
 
 class program
 {
-
 	static void Main(string[] args)
 	{
 		Method(); // call
@@ -2730,9 +3160,9 @@ getJsonUser()
 			console.log($"We get whole response ${userList}");
 			this.userList = userList; // store response
 		}),
-		map((userListAddress:any)=> userListAddress.Address), // want address reposne only
+		map((userListAddress:any)=> userListAddress.Address), // want address response only
 		map(e:any)=>{ // this map represent rxjs
-			e.map((user:any)=> return { id:user.id,name:user.Name }); // intrnal map represent array to show only particular response code
+			e.map((user:any)=> return { id:user.id,name:user.Name }); // internal map represent array to show only particular response code
 	})
 }
 
@@ -4101,74 +4531,1516 @@ firstname middlename  sirname
 after adding this filed 
 full name is filled automatically .
 
+--------------------------------------------------------------------------------------------------------------------------
+Why Generic Repository?
 
+Answer:
+
+Generic Repository helps reduce duplicate CRUD code. Instead of creating separate repositories for Product, Category, Customer, etc., 
+we write CRUD logic once and reuse it for all entities.
+
+
+
+"Would you always use Generic Repository with EF Core?"
+
+A strong answer is:
+
+"Not always. EF Core already implements Repository and Unit of Work patterns through DbSet<T> and DbContext. For simple applications I often use EF Core directly. For large enterprise applications where I want abstraction, testability, or shared CRUD logic, 
+I may use a Generic Repository combined with specialized repositories for complex queries."
+
+---------------------------------------------------------------------'
+
+
+															CRUd operation perform step by step
 															
+1> crete model class 
+
+	public class Employee
+	{
+		public int empId { get; set; }
+		public int empName { get; set; }
+		public int empEmail { get; set; }
+		public int empPassword { get; set; }
+		
+	}
+
+2> creting connection string in appsetting.ts file to communicate to database
+	
+	"ConnectionStrings":
+	{
+		"DefaultConnection":"Server=localhost;Database=Employeedb;UserId=sa;Password=Farukh@234;Trusted_Connections=true;TrustedCertificate=true";
+	}
+
+
+3> create dbContext class to communicate with datbase table by create class inherited by DbContext class
+
+	public class DatabaseContext : DbContext
+	{
+		public DatabaseContext(DbContextOptions<DatabaseContext> options):base(options)
+		{
+		}
+		
+		// mapping model class to database table
+		public Dbset<Employee> employees { get; set; }
+	}
+
+
+
+4> Register in program.cs
+
+	// add DbContext here
+	
+	builder.Services.AddDbcontext<DatabaseContext>(options=>{
+		options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+	});
+	
+	
+
+5> create controller class
+
+	[Route("api/[controller]")]
+	[Apicontroller]
+	
+	public class EmployeesController : ControllerBase
+	{
+		private readonly DatabaseContext _context;
+		
+		public EmployeesController(DatabaseContext context)
+		{
+			_context = context;
+		}
+		
+		
+		[HttpGet("GetEmployeeList")]
+		public async Task<IActionResult> GetEmployeeList()
+		{
+			if(ModelState.isValid)
+			{
+				var empList  = await _contect.employees.AsNoTracking().ToList();
+				return ok(empList);
+			}
+			return BadRequest(ModelState);
+		}
+		
+		
+		[HttpPost("AddEmployee")]
+		public async Task<IActionResult> AddEmployee([FromBody]Employee employee)
+		{
+			if(ModelState.isValid)
+			{
+				await _context.employees.AddAsync(employee);
+				await _context.SaveChangesAsync();   		// Save all changes
+				retunr ok(employee);
+			}
+			return BadRequest(ModelState);
+		}
+		
+		[HttpPut]
+		public async Task<IActionResult> Updateemployee([Frombody]Employee employee)
+		{
+			if(ModelSatate.isValid)
+			{
+				var empData = await _context.employees.FirstOrDefaultAsync(a=>a.empId == employee.empId);
+				if(empData == null)
+				{
+					return NotFound("Employee Not Found");
+				}
+				empData.empName = employee.empName;
+				empData.empEmail = employee.empEmail;
+				
+				// save in database
+				await _contect.SaveChangesAsync();
+				return OK(employees);
+			}
+			return BadRequest(ModelState);
+		}
+		
+	}
+---------------------------------------------------------------------------------------------
 
+										Filters in Asp.net core 
 
 
+What are Filters in ASP.NET Core?
 
+"Filters are components that execute before or after different stages of the MVC request pipeline. They help implement cross-cutting concerns such as 
+authorization, logging, validation, exception handling, and response modification without duplicating code in controllers."
 
 
+Types of filters
 
+A → R → A → Controller → A → R
 
+Client
+   │
+   ▼
+Middleware
+   │
+   ▼
+Routing
+   │
+   ▼
+Authorization Filter
+   │
+   ▼
+Action Filter (Before)
+   │
+   ▼
+Controller Action
+   │
+   ▼
+Action Filter (After)
+   │
+   ▼
+Result Filter
+   │
+   ▼
+Response
 
 
 
+Filter Execution Order
+--------------------
 
+Request
 
+↓
 
+Authorization Filter
 
+↓
 
+Resource Filter
 
+↓
 
+Action Filter (Before)
 
+↓
 
+Controller Action
 
+↓
 
+Action Filter (After)
 
+↓
 
+Result Filter
 
+↓
 
+Response
 
+↓
 
+Exception Filter (Only if exception occurs)
 
 
 
 
+Why do we use Filters?
 
+Suppose every API needs to:
 
+Log request
+Validate data
+Check permissions
+Measure execution time
 
+Instead of writing the same code in every controller, we create a filter.
 
 
 
+Types of Filters
 
+There are 5 main filters.
 
 
+| Filter               | Purpose                                             | Executes                 |
+| -------------------- | --------------------------------------------------- | ------------------------ |
+| Authorization Filter | Checks whether the user is authorized               | Before everything        |
+| Resource Filter      | Runs before and after model binding                 | Early in the pipeline    |
+| Action Filter        | Runs before and after the action method             | Around controller action |
+| Exception Filter     | Handles exceptions thrown by actions                | When an exception occurs |
+| Result Filter        | Runs before and after the action result is executed | Around the response      |
 
 
 
 
+1. Authorization Filter
 
+Used for:
 
+JWT Authentication
+Role-based Authorization
 
+Example
 
+[Authorize]
+public class ProductController : ControllerBase
+{
+}
 
+or
 
+[Authorize(Roles = "Admin")]
 
 
+2. Action Filter
 
+Runs before and after the controller action.
 
+Example
 
+public class LogActionFilter : IActionFilter
+{
+	
+    public void OnActionExecuting(
+        ActionExecutingContext context)
+    {
+        Console.WriteLine(
+            "Before Action");
+    }
 
+    public void OnActionExecuted(
+        ActionExecutedContext context)
+    {
+        Console.WriteLine(
+            "After Action");
+    }
+}
 
 
+Register in program.cs
 
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<LogActionFilter>();
+});
 
 
+Output
 
+Before Action
 
+Controller Executed
 
+After Action
 
 
 
+3. Exception Filter
 
+Instead of writing:
+
+try
+{
+}
+catch(Exception ex)
+{
+}
+
+
+inside every action,
+
+create one filter.
+
+Example
+
+public class CustomExceptionFilter
+    : IExceptionFilter
+{
+    public void OnException(
+        ExceptionContext context)
+    {
+        context.Result =
+            new ObjectResult("Error")
+            {
+                StatusCode = 500
+            };
+    }
+}
+
+
+
+4. Result Filter
+
+Runs before and after sending the response.
+
+Example
+
+Controller
+
+↓
+
+Result Filter
+
+↓
+
+Client
+
+
+Useful for:
+
+Adding headers
+Modifying response
+Compression
+Logging response
+
+
+
+5. Resource Filter
+
+Runs very early.
+
+Useful for:
+
+Caching
+Performance measurement
+Resource initialization
+
+
+
+Apply Filters
+----------------
+1: Action Level
+
+[ServiceFilter(typeof(LogActionFilter))]
+public IActionResult Get()
+{
+    return Ok();
+}
+
+
+
+2: Controller Level
+
+[ServiceFilter(typeof(LogActionFilter))]
+public class ProductController : ControllerBase
+{
+}
+
+3: Global Level
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<LogActionFilter>();
+});
+
+
+
+Q1. Difference between Middleware and Filters?
+
+| Middleware                             | Filters                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| Executes for every HTTP request        | Executes only for MVC/API actions                                      |
+| Runs before routing/controller         | Runs around controller actions                                         |
+| Used for Authentication, CORS, Logging | Used for validation, action logging, authorization, exception handling |
+
+
+
+Q3. When would you use an Exception Filter?
+To centralize exception handling for controller actions instead of writing try/catch in every action.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+SQL Query
+
+ Questions 1: Get the students who are taking Maths exam 
+ 
+Solution 1 : (Nested Scalar Subquery) 
+ 
+SELECT s.StudentName
+FROM Student s
+WHERE s.SubjectId IN
+(
+    SELECT sub.SubjectId
+    FROM Subject sub
+    WHERE sub.SubjectName='Maths'
+);
+
+Why use a subquery here?
+
+Because:
+
+First, find the SubjectId for Maths.
+Then, find students whose SubjectId matches that value.
+
+
+Is this a Scalar Subquery?
+
+No.
+
+This is a common interview trap.
+
+A Scalar Subquery returns exactly one value.
+
+Example:
+
+SELECT *
+FROM Student
+WHERE SubjectId =
+(
+    SELECT SubjectId
+    FROM Subject
+    WHERE SubjectName = 'Maths'
+);
+
+Here, the inner query returns one value (1), so this is a Scalar Subquery.
+
+Your query uses:
+
+IN (...)
+
+IN is designed to work with multiple values, so this is not called a scalar subquery. It is generally referred to as an IN subquery or a single-column subquery.
+
+
+Solution 2 > use inner join
+
+Most interviewers prefer this because it's more readable.
+
+select s.studentName from 
+Student as s
+inner join
+Subject as sub 
+on s.subjectId = sub.subjectId
+where sub.subjectName="Maths";
+
+
+
+Interview Tip : Types of SubQuery
+
+You should know these four common subquery types:
+
+1> Scalar Subquery → Returns one value.
+
+WHERE Salary > (SELECT AVG(Salary) FROM Employee)
+
+2> Multi-row Subquery → Returns multiple rows.
+
+WHERE DepartmentId IN (SELECT DepartmentId FROM Department)
+
+3> Correlated Subquery → Inner query depends on the outer query.
+
+SELECT *
+FROM Employee e1
+WHERE Salary >
+(
+    SELECT AVG(Salary)
+    FROM Employee e2
+    WHERE e1.DepartmentId = e2.DepartmentId
+);
+
+
+4> Nested Subquery → A subquery inside another subquery.
+
+
+
+----------------------------------------------------------	
+												SQL Basic Query
+												
+
+Q > create new table 
+
+create table Employee
+(
+	Id int primary key,
+	Name varchar(50),
+	Gender varchar(50),
+	Salary Decimal(10,2)
+);
+
+Q > create new table with foreign key
+
+	create table Customer
+	(
+		custId int primary key,
+		Name varchar(100),
+		empId int foreign key reference Employee(Id),
+	);
+
+Q > Alter command
+
+  1> Add new column
+  
+  alter table Employee add Email varchar(50);
+  
+  2> Drop column
+  
+  alter table Employee drop column Email ; 
+  
+  3> Modify datataype 
+  
+  alter table Employee alter column Email nvarchar(200)
+  
+  
+  4> Rename column 
+  
+  Sql server uses sp_rename
+  
+  exec sp_rename
+  'EmployeeName'
+  'column';
+  
+  
+  5> Add primary key
+  
+  alter table Employee 
+  add constraint pk_Employee
+  primary key(Id);
+
+
+
+Q 1> insert new record in Employee 
+
+insert into Employee(Id,Name,Gender,Salary) values(101,'Farukh','Male',50000);
+
+Q 2> insert this records in new table 
+
+select * into tblEmployeeBackup from Employee;
+
+Q 3> change salary 50000 to 70000 of employee table of employee id 101
+
+update Employee
+set Salary = 70000
+where Id = 101;
+
+
+Q 4> delete employee of id = 101
+
+delete from Employee where Id = 101 ;
+
+----------------------------------------------------
+
+Difference Between DELETE, TRUNCATE, and DROP
+
+
+| DELETE                 | TRUNCATE         | DROP                     |
+| ---------------------- | ---------------- | ------------------------ |
+| Deletes selected rows  | Deletes all rows | Deletes the entire table |
+| Can use `WHERE`        | No `WHERE`       | No `WHERE`               |
+| Logs each row deletion | Minimally logged | Removes the object       |
+| Identity not reset     | Identity reset   | Table removed            |
+
+DELETE FROM Employee	  TRUNCATE TABLE 		DROP TABLE Employee;
+WHERE Id = 101;			   Employee;			
+					
+					
+			
+ --------------- *** cheat sheet **** ------------
+			
+-- Create table
+CREATE TABLE Employee (...);
+
+-- Add column
+ALTER TABLE Employee
+ADD Email VARCHAR(100);
+
+-- Change datatype
+ALTER TABLE Employee
+ALTER COLUMN Salary DECIMAL(12,2);
+
+-- Remove column
+ALTER TABLE Employee
+DROP COLUMN Email;
+
+-- Insert
+INSERT INTO Employee VALUES(...);
+
+-- Update
+UPDATE Employee SET Salary=70000 WHERE Id=1;
+
+-- Delete row
+DELETE FROM Employee WHERE Id=1;
+
+-- Delete all rows
+TRUNCATE TABLE Employee;
+
+-- Delete table
+DROP TABLE Employee;
+
+-----------------------------------------------------------------------
+
+Q1. What is an Exclusive Lock?
+
+Answer
+
+It is a lock SQL Server places during INSERT, UPDATE, or DELETE operations. 
+While an Exclusive Lock exists, other transactions cannot modify the same data, and under the default isolation level they cannot read the uncommitted changes.
+
+
+Q2. What does WITH (NOLOCK) do?
+
+Answer
+
+It allows SQL Server to read data without acquiring a shared lock and without waiting for exclusive locks. 
+This improves concurrency but can result in dirty reads because uncommitted data may be returned.
+
+
+
+Q3. Is NOLOCK good?
+
+Best answer:
+
+It improves performance and reduces blocking for read-heavy queries, but it sacrifices consistency by allowing dirty reads. 
+It should only be used when occasional inaccurate data is acceptable.
+
+Easy Memory Trick
+
+| Lock          | Used By                      | Other Reads Allowed?  | Other Writes Allowed? |
+| ------------- | ---------------------------- | --------------------- | --------------------- |
+| Shared (S)    | `SELECT`                     | ✅ Yes (other readers) | ❌ Writers wait        |
+| Exclusive (X) | `INSERT`, `UPDATE`, `DELETE` | ❌ Normally wait       | ❌ Wait                |
+
+
+What is a deadlock?
+
+A deadlock occurs when two or more transactions each hold locks that the others need, causing all of them to wait indefinitely. SQL Server detects the deadlock automatically, 
+selects one transaction as the deadlock victim, rolls it back, and allows the other transaction to continue.
+
+
+
+
+What is UPDLOCK?
+
+Answer:
+
+UPDLOCK places an Update Lock instead of a Shared Lock during a read operation. It indicates that the transaction intends to update the row later,
+ reducing the likelihood of lock-conversion deadlocks.
+ 
+ 
+ Does UPDLOCK eliminate all deadlocks?
+
+No.
+
+This is a favorite interview question.
+
+Correct answer:
+
+No. UPDLOCK helps reduce certain deadlocks, particularly those caused by lock conversion from Shared to Exclusive locks. However, 
+deadlocks can still occur due to inconsistent resource access order or other locking patterns.
+
+
+how to resolve deadlock
+1> keep transaction time minimum  -- above we have 30 sec reduce it
+2> keep logical chronological order  -- tran1 = id=4,5    trna2 = 4,5   keep logical order
+ 3> use update lock
+
+below we use update lock on deadlock resolve
+Example :
+
+begin tran
+	select * from tblCustomer2 with (uplock) where id=4
+	or id=5
+	update tblcustomer set name='somedata'
+	where id=4;
+	waitfor delay '00:00:20'
+	update tblCustomer2 set name='somedata'
+	where id=5;
+commit tran
+-----------------------------------------------------------------
+-- tran2
+begin tran
+	select * from tblCustomer2 with (uplock) where id=4
+	or id=5
+	update tblcustomer set name='somedata'
+	where id=5;
+	waitfor delay '00:00:20'
+	update tblCustomer2 set name='somedata'
+	where id=4;
+commit tran
+-------------------
+select * from tblCustomer2 where id=4;
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+Question : What's th Problem the Functional Programming ?
+Answer -: 
+		1> Reusability 
+		2> Extensibility 
+		3> Simplicity
+		4> Maintainability
+
+	Example : Javascript is Functional Programming Languages.
+
+	1> Reusability -: Different copies of some code in both class is Redundant code
+		class  clsProduct
+		{
+			private int CalculateCost(int intPerProductCost,int intQty)
+			{
+				return (intPerProductCost*intQty);
+			}
+		}
+
+		class clsProductWithDiscount
+		{
+			private int CalculateCost(int PerProductCost,int Qty)
+			{
+				return (PerProductCost*Qty);
+			}
+		}
+
+	2> Extensibility -: 
+			- New Function created rather than extending 
+			- Extensibility and Simplicity issues
+
+		class clsProduct
+		{
+			private int CalculateCost(int PerProductCost,int Qty)
+			{
+				return (PerProductCost*Qty);
+			}
+		}
+
+		class clsProductWithDiscount
+		{
+			private int CalculateCostInterest(int PerProductCost,int Qty,int Discount)
+			{
+				return (PerProductCost*Qty)-Discount;
+			}
+		}
+
+	Note -: If u want to add new Features to existing function it is not possible in Functional Programming.
+
+----------------------------------------------------------------------------------------------------------------
+
+	Question : Can you Define OOP and 4 principles of OOP ?
+	Answer -: it is design philosopy where we visualize in terms of sustained objects .
+
+	1> Reusability -: Classes and Object
+		- Rather than copy same code create class make object of class and reuse them whenever we want 
+		- Object are created in Memory no physical data created on Harddisk bcoz it create on memory
+
+	2> Extensibility -: Inheritence , aggregation and composition 
+	3> Simplicity -: Abstraction, Encapsulation and Polymorphism
+		- Object is very complex in order to make simple above thing is used to solve the problem 
+
+	4> Maintainability -: All the above 3 combined helps us to maintain the code better .
+
+
+										**** OOPS ****
+	- OOPS contain Following Feauture or pillars {}
+	A] Abstraction
+	B] Encapsulation
+	C] Inheritance 
+	D] Polymorphism
+
+	Note : Remember the word "APIE"
+	A] Abstraction :
+		- Allows complex world to represented in a simplified manner by explosing only the necessary properties.
+		 For instance a color can be abstracted by RGB i.e we can creted many color by  this combination of mixed color
+	Example : Two wheeler : wheel , indicator , Break, Handle, mirror , speedmeter , number plate are necessary for user
+
+	Note -: Abstraction can be achieve in two ways
+	       a] Abstract class
+		   b] Interface
+
+	B] Encapsulation
+		- Process of Hiding inner details from external world with that making the object interface simple
+		- it is used to provide security by hiding the Business Logic from outside World
+	Example : Two Wheeler : Engine work , internal wire work , mechanism of speedmeter , click horn button sound generated
+
+	Note -: We can Achieve Encapsulation is oops programming by Access Modifier i.e private ,public,internal,
+		    protected, internal protected
+
+
+	C] Inheritance :
+		- if you want to acquire the properties of one class to another class by Established the Relationship as 
+		Parent - child . Inside child class we have all properties of parent class plus add new Features 
+		- So we can have a class with just get and set . we can then inherit and create a new specilized class
+		which does database Operations.
+
+		Note: we cannot acces the private member of parent class in child class
+
+	D] Polymorphism :
+		- We want a Object to play different Role depending on different situations .
+		- For instance we can create class which does database operation on SQL Server and Oracle ,
+		Depending on connection String. it will MORPH its role to do SQL operation or Oracle Operations.
+		- Poly means many and MORPH means change or Behaviour
+-		- Example is Operator overloading :
+			str1="Farukh" + "Shaikh"  -: Farukh Shaikh  (string concantenation occur at runtime)
+			str1 = 1 + 4 -: 5 (Arithmetic operation occur at runtime)
+		Note -:  polymorphism is occur
+
+
+
+
+Questions 1: What are classes and Objects ?
+Answer -: 
+	- Classes and Objects address reusability .
+	- Rather than thinking in terms of Functions thinks in terms of Objects .
+	- A class is simply type of objects. it is blueprint/template/plan that describe the general details of a data .
+	- A class is the blueprint from which the individual objects is created 
+	- Object is instance/occurences of class. with the help of object we assign memory to their member of class.
+	- An Object can be considered a "thing" that can be performe activities used to define the objects's behaviour
+
+Example :
+	public class clsProduct // class
+	{
+		public int getTotalCost(int intQty,int intPerProduct) // method parameter
+		{
+			return intQty * intPerProduct;
+		}
+	}
+	// class used as Object
+	clsProduct obj=new clsProduct();  // object is created
+	int totalCost=obj.getTotalCost(10,100); // method argument
+
+
+
+Questions 2: what is Inheritence ?
+Answer -: 
+	- Inheritence address the problem of extensibility .
+	- if you want to acquire the properties of one class to another class by Established the Relationship as 
+		Parent - child . Inside child class we have all properties of parent class plus add new Features 
+	- Parent-child Relationship : 
+			By using the inheritence we can create a child class which has all the qualities of parent plus some extra new qualities 
+		of himself too .
+
+Example -:
+			
+				public int CalculateCost(int intPerProductCost , int intQty)
+				{
+					return (intPerProductCost*intQty);
+				}
+
+				|
+				|-- new Function is created in Functional Programming rather than extending
+				|
+
+				public int CalculateCost(int intPerProductCost,int intQty,int intDiscount)
+				{
+					return (intPerProductCost*intQty)-intDiscount;
+				}
+	
+	** In OOPS
+
+		public class clsProduct
+		{
+				public int getTotalCost(int intPerProductCost,int intQty)
+				{
+					return (intPerProductCost*intQty);
+				}
+		}
+		// clsProduct class is extended and clsProductWithDiscount class is created using inheritence
+
+		public class clsProductWithDiscount : clsProduct // colon represent inheritence
+		{
+			public int getTotalCost(int intPerProductCost , int intQty, int intDiscount)
+			{
+					return (intPerProductCost*intQty)-intDiscount;
+			}
+		}
+
+
+
+Question 3: What is Polymorphism , overloading and overriding and virtual?
+Answer -: 
+	- Address simplicity : 
+		- By using Polymorphism you can have more simplified interfaces and neat code .
+	- Meaning of Polymorphism :
+		- 'poly' means many .'morphism' means forms . its a ability of object to change the behaviour as per situations.
+
+	** Type's of PolyMorphism 
+	1> static Polymorphism\Early Binding\Method Overloading : 
+		- this method is called at compiled time only . Method Overloding is and Example of Static Polymorphism
+	2> dynamic Polymorphism\ Late Binding \ Method Overriding :
+		- Reimplementation of parent class in child class is done using virtual and override keyword .
+		- it is called when at runtime . Dynamic polymorphiem is achieved using inheritence and overriding.
+		- Method overrdiing return type and input signature are same or exactly match .
+		- if we dont use override then use new keyword
+
+
+Question 4:Can you Explain Encapsulation and Abstractions?
+Answer -:
+	- Encapsulation means hiding complexity . at implementation level
+	- Abstraction means show only necessasary member to user it is used at Design level
+	- Abstraction and Encapsulation both compliment to each other
+
+	Note : We can acheive Encapsulation using Access modifier(define scope of variable) to make object simple by hide complexity of Object
+	1> private : Only member of class have access .
+	2> public : All member have access in all classess and projects .
+	3> protected : All member in  current class and derived class can access the variable .
+	4> internal  : Only member in current project have access to the elements means inside the project
+	5> protected internal : All member in current project and all members in derived class can access the variable .
+			means inside project and for inherited class
+	Example : create screen customercode and customername are two textboxes and Add button but 
+			validate() for identify the customer and createDBObject() are hide from user
+	when user click Add button user get suceess message
+
+
+	public class Customer
+	{
+		private void Validate()
+		{
+			// validate
+		}
+		public void Add()
+		{
+			Validate(); // method logic is Hide
+			// Add it to the DB
+		}
+	}
+	public class Program
+	{
+		static void Main()
+		{
+			Customer obj=new Customer();
+			obj.Add(); // only need to call Add() not Validate to make object simple
+		}
+	}
+
+
+Question 5: What is abstract class?
+Answer -: 
+	- Abstract class represent base class , and we can not create objects of these class .
+	- you can make use of abstract classes to implement such functionality in c# using the modifier 'abstract' .
+	- An Abstract class means that, no object of this class can be instatiated , but can make derivations of this .
+	- An abstract class can contain either abstract methods or non abstract methods . abstract members do not have any implementation in the
+		abstract class , but the same has to be provided in the derived class .
+	- An abstract class cannot be sealed or a static class .
+	- it is used when you want to increase resuability using inheritence
+	- An abstract class cannot be sealed class
+	- An abstract method cannot be private
+	- the acess modifier of the abstract method should be same in both the abstract class and its derived class . if you declared an abstract 
+	method as protected , it should be protected in its derived class . ow , the compiler raise an error .
+	- An abstract method cannot have the virtual modifier . Beacause an abstract method is implicitly virtual .
+	- An Abstract method cannot be static
+
+
+	Note : Difference between virtual vs abstract
+		- abstract method must be implemented inside child class where 
+		- override keyword must be used to implement abstract class abstract method .
+		- virtual it is not compultion to implement method inside child class
+		- not necessary to use override keyword just give warning use "new" keyword
+
+
+
+
+Question 6: Define Interface ? 
+		what is the difference between abstract and interface ?
+Answer :	
+	- What is interface :
+		- interface is contract 
+		1: An interface looks like a class , but has no implementation  i.e only abstract method present.
+			it only contains definations of events , indexer , method/properties
+			the reason interfaces only provide definations beacause they are inherited by class 
+			which must provide an implementations for each interface member defined .
+
+	Note : Interface class contain byDefault abstract method so dont use 'abstract' keyword and also implementation dont use
+			'override' keyword
+
+	- Use Of Interface:
+		1: They are decoupled by using dynamic polymorphism
+		2: Enforce standarizations : 
+				- all developer must use this method name and implement you cannot change to impose standard uniform method name
+				because every developer can give any name for method to maintain uniform method or standard interface is used
+				if we dont implement interface method
+
+		3: interface is nothing but a contract that must be followed :
+			- When both class does not have any relation but they want to follow some rule using interface
+			Ex: employee and company both should agreement if any company not follwed then employee sues company
+
+		4: Multiple Inheritnce : we can achieve with interface using explicit interface type .
+		5: ISP(Interface Segregation Principle) -: if u want to add new feature withoud modifying old code is done with interface
+		Example : you create one class contain Read() and Update() but in future new customer wants to add Delete() so don't make change in 
+			old interface create new interface and implement in class Example 2
+
+			Ex1:		
+				interface IRead
+				{
+					void read();
+				}
+				interface IUpdate
+				{
+					void update();
+				}
+				class OldCustomer : IRead , IUpdate
+				{
+					public void read()
+					{
+						
+					}
+					public void update()
+					{
+						
+					}
+				}
+
+				Example 2
+
+				interface IRead
+				{
+					void read();
+				}
+				interface IUpdate
+				{
+					void update();
+				}
+				// create new interface
+				interface IDelete
+				{
+					void delete();
+				}
+				class OldCustomer : IRead , IUpdate , IDelete
+				{
+					public void read()
+					{
+						
+					}
+					public void update()
+					{
+						
+					}
+					public void delete()
+					{
+
+					}
+				}
+
+
+		- Interface keyword is used to define interface .
+		- Interface can not have field variable.
+		- Interface can not have implemented functions and methods beacuase they are bydefault abstract method.
+		- All methods in a interface needs to be implemented .
+		- Interface can be used to implemente Run time Polymorphism
+		- You can implement multiple interface
+		- All interface method are public
+
+
+Question 7: difference between abstract class and interface ?
+
+	1:
+		- An abstract class can have abstract method as well as non-abstract method .
+		- In interface add member are implicitly abstract and all the members of the interface must override to its derived class
+		Note : no need to use 'override' keyword.
+
+	2:
+		- Abstract class can have protected parts,static methods etc.
+		- The member of interface are public with no implementations
+
+	3:
+		- Abstract class can Add more functionality withoud destroying child classes and that were using the old version .i.e
+			we can add non-abstract method in abstract class and no need to must implement in child class
+		-  If u want to add new function it can affected to child classes, due to the necessary implementations of interface methods 
+			to classes.
+
+	4: Defining an abstract class with abstract members has the same effects to defining an interface 
+		but we cannot acheive Multiple inheritence 
+		so that time only interface is used 
+	
+	5:
+		- abstract class is parent class that we cannot create object and the functionality of parent class reuse in child class 
+			using inheritence
+		- we want to maintain uniformility and standarized your applications in interface.
+
+	Note : if all method inside abstract class are abstract method then it becomes interface but it can not satisfy condition of 
+	multiple inheritence .
+	it can only achieve by interface .
+
+
+Question 8: What is the use of Shadowing in c#?
+Answer : 
+	- parent class member is completely replaced by the child class
+
+Example : create class Sales contain InvoiceNumber as int but for future we want alphnumerice character for new customer
+	but old client want only integer data they dont want any changes then use it shadowing not overriding bcoz it change
+	only implementation not return type
+
+
+	Ex: old client invoice number is used Adhar card Number(which contain only Number) and New Client want PAN Card Number
+	(contain Alphanumeric characters)
+
+	- Shadowing replace the complete element of the parent . In simple words it can	change a variable element of parent to method/Function
+	- Shadowing is useful when get a requirement where vocabulary will be same but the data types need to be changed .
+	- Overriding changes implementations while shadowing replace element with a complete new element only interface vocabulary is same.
+
+
+
+	Note :
+		- Override only changes implementation of Function
+		- Shadowing / Hiding :
+			- change return type and method parameter i.e completely change the element with new element
+
+	1:Method overlod - same Function with different input signature irrespective of return type
+	2:Method override - same function and same input signature , and return type with different implementation
+	3:Method Hiding - same function name with different return type and different input signature
+
+
+
+Question 9: Can a class implement Interfaces with same method names ?
+Answer -: 
+	- c# does not used Multiple Inheritence so we use Multiple interface
+	- when two interface having same method it is Explicit interface
+	Example :
+
+	interface I1									interface I2
+	{												{
+		method1();										method1();		
+	}												}
+
+	class A: I1,I2
+	{
+		void method1()
+		{
+		}
+	}
+
+	OutPut: Compiled sucessfully
+
+
+											SOLID Principle
+											--------------
+											--------------
+	- SOLID are 5 basic principles which help to create good software architecture . SOLID is an acronym
+	- Design patteren is time tested solution for oops Environment problem : singleton , publisher/subscriber , DI , Repositery patteren
+
+	1> S stands for SRP(Single Responsibility principle)
+	2> O stands for OCP(Open Closed principle)
+	3> L stands for LSP(Liskov sunstitution principle)
+	4> I stands for ISP(Interface Segregation principle)
+	5> D stands for DIP(Dependency Inversion principle)
+
+
+
+									1> S stands for SRP(Single Responsibility principle)
+									-----------------------------------------------------
+	Example 1:
+
+	public class Customer 
+    {
+        public void Add()
+        {
+            try
+            {
+                // Adds to Customer database
+            }
+            catch (Exception ex)
+            {
+
+                System.IO.File.WriteAllText(@"c:\Error.txt",ex.ToString());
+            }
+        }
+    }
+
+-	here is the Problem this Customer class is doing work which he is not support to do So Customer class do Customer Validations
+	but is also does logging activity
+	
+		spanish proverb: it is not load but the overload that kills
+
+
+- So SRP says that a class should have only one responsibility and not multiple 
+
+Example : create separate class for separate activity to handle error we create separate class
+
+ public class Customer 
+    {
+        public void Add()
+        {
+            try
+            {
+                // Adds to Customer database
+            }
+            catch (Exception ex)
+            {
+
+                ErrorHandler obj = new ErrorHandler();
+                obj.HandleError(ex.ToString());
+            }
+        }
+    }
+    public class ErrorHandler
+    {
+        public void HandleError(string err)
+        {
+            System.IO.File.WriteAllText(@"c:\Error.txt", ex.ToString());
+        }
+    }
+
+
+
+												2> O stands for OCP(Open Closed principle)
+												------------------------------------------
+	- Open for Extension closed for Modification
+	- modification means adding new Functionality
+	Example : Customer having various type i.e platinum , GoldCustomer, SilverCustomer , 
+	accrording to this we decide Discount for product
+
+	- Close the customer class for modifications but it can be extended Open and Closed Principle 
+
+
+	class Customer
+	{
+		private int _custType;
+		public int CustType
+		{
+			get{return _custType;}
+			set{_custType=value;}
+		}
+		public double CalculateDiscount()
+		{
+			if(_custType==1) // GoldCustomer 10 % discount
+			{
+				return 10;
+			}
+			else
+			{
+				return 5;
+			}
+		}
+	}
+
+	- here we some modification create simple class with no discount and make method virtual so u can override inside child class
+
+
+
+public class Customer
+{
+	public virtual double CalculateDiscount() // methods is ready to override
+	{
+		return 0;
+	}
+	public void Add()
+	{
+		try
+		{
+			//Adds the Customer database
+		}
+		catch(Exception ex)
+		{
+			 ErrorHandler obj = new ErrorHandler();
+             obj.HandleError(ex.ToString());
+		}
+	}
+}
+  public class GoldCustomer : simpleCustomer // open for extention
+    {
+        public override double CalCulatDiscount()
+        {
+            return base.CalCulatDiscount()+10;
+        }
+    }
+    public class SilverCustomer : simpleCustomer // open for extention
+    {
+        public override double CalCulatDiscount()
+        {
+            return base.CalCulatDiscount() + 5;
+        }
+    }
+ public class ErrorHandler
+    {
+        public void HandleError(string err)
+        {
+            System.IO.File.WriteAllText(@"c:\Error.txt", ex.ToString());
+        }
+    }
+
+
+
+												3> L stands for LSP(Liskov substitution principle)
+											---------------------------------------------------
+											--------------------------------------------------
+
+		- So LISKOV principle says the parent should easily replace the child objects
+		- The Liskov Substitution Principle in practical software development. The principle defines that 
+		objects of a superclass shall be replaceable with objects of its subclasses without breaking the application.
+
+		- Here we want to add new Customer i.e EnquiryCustomer who does not buy any product so i want to give only 2 per discount
+		so it is not real customer so i dont want to save data in database so
+
+Example 3
+ 
+public class Customer // simple Customer
+{
+	public virtual double CalculateDiscount() // method is ready to override
+	{
+		return 0;
+	}
+	public void Add()
+	{
+		try
+		{
+			//Adds the Customer database
+		}
+		catch(Exception ex)
+		{
+			 ErrorHandler obj = new ErrorHandler();
+             obj.HandleError(ex.ToString());
+		}
+	}
+}
+
+public class Enquiry :  Customer
+{
+	public override double CalculateDiscount()
+	{
+		return 2;
+	}
+	public void Add()// dont save data in database
+	{
+		throw new NotImplementedException("For Enquiry Type of Customer !!");
+	}
+}
+
+	-- As per polymorphism rule , My parent customer class Customer can point to any of its child class object seamlessly i.e GoldCustomer,
+	SilverCustomer without any issue here Enquiry is not real customer so i dont save data in my database so i have create two interface
+	where who is real Customer who buys our product and another just come for Enquiry
+
+	public interface IEnquiry // not real customer
+	{
+		
+	}
+	public interface ICustomer:IEnquiry // real Customer but first they Enquiry
+	{
+		
+	}
+
+	Example 3
+
+    public interface IEnquiry // not real customer
+    {
+        double CalCulatDiscount(); // give little Discount but not save in database
+    }
+
+    public interface ICustomer : IEnquiry // real Customer
+    {
+        void Add(); // give discount and also save in database bcoz they are real customer
+    }
+
+   
+    public class simpleCustomer2 : ICustomer // simple class
+    {
+        public virtual double CalCulatDiscount()
+        {
+            return 0;
+        }
+        public void Add()
+        {
+            try
+            {
+                // Adds to Customer database
+            }
+            catch (Exception ex)
+            {
+
+                ErrorHandler obj = new ErrorHandler();
+                obj.HandleError(ex.ToString());
+            }
+        }
+    }
+    public class EnquiryCustomer2 : IEnquiry
+    {
+        public double CalCulatDiscount()
+        {
+            return 2;
+        }
+    }
+    public class GoldCustomer2 : simpleCustomer2 // open for extenstion
+    {
+        public override double CalCulatDiscount()
+        {
+            return base.CalCulatDiscount() + 10;
+        }
+    }
+    public class SilverCustomer2 : simpleCustomer2 // open for extenstion
+    {
+        public override double CalCulatDiscount()
+        {
+            return base.CalCulatDiscount() + 5;
+        }
+    }
+    public class ErrorHandler2
+    {
+        public void HandleError(string err)
+        {
+            System.IO.File.WriteAllText(@"c:\Error.txt", err);
+        }
+    }
+    public class Program
+    {
+        static void Main(string[] args)
+        {
+            List<simpleCustomer2> obj = new List<simpleCustomer2>();
+            obj.Add(new GoldCustomer2());
+            obj.Add(new SilverCustomer2());
+            //obj.Add(new EnquiryCustomer2()); it is not real customer so we not add to memory
+
+            foreach (simpleCustomer2 o in obj)
+            {
+                o.Add();
+            }
+        }
+    }
+
+	
+
+										4> I stands for ISP(Interface Segregation principle)
+										----------------------------------------------------
+										---------------------------------------------------
+
+		In previous example if u want to add new Customer who want to Discount() add to database and also want to read data
+	and old customer satisfy with their old requirement so don't change in old interface create new interface and add features to that interface
+
+	 so here we create IRead interface for new client class 
+	 so we are not update old interface for old client as their work previously 
+	 and new client get those Extra functionality as they need as welll as they get new Functionality
+
+
+	 Note : show only those method to the client which they need
+
+
+
+								5> D stands for DIP(Dependency Inversion principle)
+								---------------------------------------------------
+								---------------------------------------------------
+
+	- Instead of Creating object with new keyword just pass object reference to the constrctor of class and
+	create object outside which make your application loosely couple
+
+	Example 5
+		- we have different Error handler so we create new interface
+
+
+
+
+	public interface IErrorHandler5 // create interface for handle error
+    {
+        void HandleError(string err);
+    }
+    public class FileErrorHandler5 : IErrorHandler5
+    {
+        public void HandleError(string err)
+        {
+            System.IO.File.WriteAllText(@"c:\Error.txt", err);
+        }
+    }
+    public class EventViwerErrorHandler : IErrorHandler5
+    {
+        public void HandleError(string err)
+        {
+            // handle error in Event Viwer
+        }
+    }
+
+	 public class simpleCustomer5 : ICustomer5  // simple class
+    {
+        private IErrorHandler5 Ierr = new EventViwerErrorHandler(); // pass reference of interface and create object
+        public virtual double CalCulatDiscount()
+        {
+            return 0;
+        }
+        public void Add()
+        {
+            try
+            {
+                // Adds to Customer database
+            }
+            catch (Exception ex)
+            {
+
+                Ierr.HandleError(ex.ToString());
+            }
+        }
+    }
