@@ -1378,6 +1378,25 @@ Loan Global Page: Designed a centralized dashboard to support "one-touch" operat
 .
 Microservices Architecture: Managed services for LOS (Blob Storage) and AI-driven Versioning to ensure data consistency across the multi-million dollar loan lifecycle
 
+------------------
+
+Roles and Responsibility
+
+gather information of project with BA team
+creatre sprint with technical manager and producy owner on jira
+inside sprint create task nd subtask assign with time and add flowchart and algorith step and images upload on this task with tech lead
+daily sprint meeting accept task given by manager and team lead
+start development by converting figma design to actual design by suing html ,cc, angular for html , css take help og designer team
+after development assign to Qa for testing this task
+if bug rasied by QA inside task this story again assign to me with raised bug by QA team
+solve this issue with add ROC if this big or add description  then deployment code to development ina zure via visual stuido code 
+after development it trigger to QA envirnonment inform Qa team and assign this story to QA again
+take meeting with other team if anything happen setup war room for major bug 
+
+
+19 Dec 2022
+.Net Full Stack Developer
+
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 
 Extension class :  it gives extra feature to existing datatype class 
@@ -1641,8 +1660,118 @@ Multiple microservice calls
 Don't use parallel execution when the second API depends on data returned by the first API.
 
 
+ -- task.whenall() :
+ 
+// GOOD: Parallel — all start together, wait once. Max time = longest task (1.5s)
+public async Task<DashboardData> LoadDashboardParallel()
+{
+    // Fire all three immediately — they run concurrently
+    var partnersTask = _partnerService.GetPartnersAsync();
+    var transactionsTask = _txnService.GetSummaryAsync();
+    var kycTask = _kycService.GetStatusAsync();
+    
+    // Wait for ALL to complete — single await, single exception point
+    await Task.WhenAll(partnersTask, transactionsTask, kycTask);
+    
+    // All tasks done, extract results
+    return new DashboardData 
+    { 
+        Partners = partnersTask.Result,        // ✅ Safe — completed
+        Transactions = transactionsTask.Result,
+        KycStatus = kycTask.Result
+    };
+} 
+Start all three, then WhenAll waits once. Time = longest task, not sum. On our Azure-hosted microservices, 
+this was the difference between a snappy dashboard and a timeout."
 
 ----------------------------------------
+in Angular if we have dashboard component where we get all get api response use
+
+You have 5 dashboard APIs. Which approach will you use?
+Good answer:
+"Since Angular HttpClient returns Observables, I would use forkJoin(). It executes all HTTP requests in parallel and emits the combined result 
+after all requests complete successfully.If I were working with Promise-based APIs instead, I would use Promise.all()."
+
+
+// below we have example 
+
+ getAllUsers() {
+    return this.http.get('https://jsonplaceholder.typicode.com/users');
+    //return this.http.get('https://jsonplaceholder.typicode.com/users').pipe(delay(3000)); // Added delay for demonstration
+  }
+
+  getAllComments() {
+    return this.http.get('https://jsonplaceholder.typicode.com/comments');
+  }
+
+  getAllPhotos() {
+    return this.http.get('https://jsonplaceholder.typicode.com/photos');
+  }
+
+  getAlbums() {
+    return this.http.get('https://jsonplaceholder.typicode.com/albums');
+  }
+
+loadDashboard() {
+
+  // Show spinner
+  this.spinner.showSpinner();
+  // we use forkjoin() here
+  forkJoin({
+    users: this.getAllUsers(),
+    comments: this.getAllComments(),
+    photos: this.getAllPhotos(),
+    albums: this.getAlbums()
+  }).subscribe({
+
+    next: (result: any) => {
+
+      this.users = result.users;
+      this.comments = result.comments;
+      this.photos = result.photos;
+      this.albums = result.albums;
+
+      this.userCount = this.users.length;
+      this.commentCount = this.comments.length;
+      this.photoCount = this.photos.length;
+      this.albumCount = this.albums.length;
+
+      this.loading.set(false);
+
+      // Success toast
+      this.toastService.showSuccess('Dashboard loaded successfully');
+
+      console.log('All APIs completed.');
+    },
+
+    error: (error) => {
+
+      console.error('Error loading dashboard:', error);
+
+      this.loading.set(false);
+
+      // Error toast
+      this.toastService.showError('Failed to load dashboard');
+    },
+
+    complete: () => {
+
+      console.log('Dashboard loading process completed.');
+
+      // Call another API if needed
+      // this.getEmployeeCount();
+      // this.loadRoles();
+    }
+
+  })
+  .add(() => {
+    // Always executes (success or error)
+    this.spinner.hideSpinner();
+  });
+
+}
+
+-------------------------------------------------------------------------------------------------------------------------------
 here we new few things 
 services.AddSingleton() - create only one object instance in overall project
 Ex: maybe for Extension class not sure
@@ -1785,10 +1914,209 @@ Creating a new instance each time avoids unnecessary shared state and makes the 
 | **Transient** | Every injection       | Lightweight, stateless services | `EmailService`, `PdfGenerator`, `HashService`   |
 
 
+Question 1> What is MemoryCache ?
+
+MemoryCache is an in-memory caching mechanism in ASP.NET Core. It stores frequently used data in the server's RAM so you don't have to fetch it repeatedly from a database or external API.
+Think of it like this:
+
+Without Cache
+
+User → API → Database → Response
+
+With MemoryCache
+
+User → API → MemoryCache → Response
+
+If the data isn't in the cache:
+
+User → API → Database → Save to Cache → Response
+
+Question 2> How to implement MemoryCache ?
+
+Step 1: Register MemoryCache
+
+In Program.cs
+
+builder.Services.AddMemoryCache();
+
+Step 2: Inject IMemoryCache
+
+using Microsoft.Extensions.Caching.Memory;
+
+public class ProductService
+{
+    private readonly IMemoryCache _memoryCache;
+
+    public ProductService(IMemoryCache memoryCache)
+    {
+        _memoryCache = memoryCache;
+    }
+}
+
+Step 3: Get Data from Cache
+
+public async Task<List<Product>> GetProducts()
+{
+    if (_memoryCache.TryGetValue("products", out List<Product> products))
+    {
+        Console.WriteLine("Returned from Cache");
+        return products;
+    }
+
+    Console.WriteLine("Returned from Database");
+
+    products = await _context.Products.ToListAsync();
+
+    _memoryCache.Set("products", products);
+
+    return products;
+}
+
+
+Flow
+--------
+Request
+
+↓
+
+Is "products" in cache?
+
+↓
+
+YES ----------------> Return Cached Data
+
+↓
+
+NO
+
+↓
+
+Database Call
+
+↓
+
+Store in Cache
+
+↓
+
+Return Data
+
+
+
+Step 4: Set Expiration
+
+Absolute Expiration
+
+Expires after a fixed time.
+
+_memoryCache.Set(
+    "products",
+    products,
+    TimeSpan.FromMinutes(10)
+);
+
+After 10 minutes, the cache is removed.
+
+
+Sliding Expiration
+
+Keeps the cache alive as long as it's being accessed.
+
+
+_memoryCache.Set(
+    "products",
+    products,
+    new MemoryCacheEntryOptions
+    {
+        SlidingExpiration = TimeSpan.FromMinutes(5)
+    });
+	
+Example:
+
+10:00 Request
+
+10:04 Request
+
+10:08 Request
+
+10:12 Request
+
+Cache never expires because it is continuously used.
+
+If nobody requests it for 5 minutes, it expires.
+
+
+Both Together
+
+_memoryCache.Set(
+    "products",
+    products,
+    new MemoryCacheEntryOptions
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+        SlidingExpiration = TimeSpan.FromMinutes(10)
+    });
+	
+This means:
+
+If the cache is idle for 10 minutes, it expires.
+Even if it is used constantly, it will be removed after 1 hour.
+
+
+Step 5: Remove Cache
+
+When data changes, invalidate the cache.
+
+_memoryCache.Remove("products");
+
+
+Example:
+
+
+public async Task AddProduct(Product product)
+{
+    _context.Products.Add(product);
+
+    await _context.SaveChangesAsync();
+
+    _memoryCache.Remove("products");  // Remove existing cache
+}
+
+
+Step 6: Using GetOrCreateAsync
+
+Instead of checking manually:
+
+var products = await _memoryCache.GetOrCreateAsync("products", async entry =>
+{
+    entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+
+    return await _context.Products.ToListAsync();
+});
+
+
+This automatically:
+
+Checks the cache.
+If missing, executes the database query.
+Stores the result in the cache.
+Returns the cached data.
+
+
+| Feature                       | MemoryCache | Redis                                    |
+| ----------------------------- | ----------- | ---------------------------------------- |
+| Storage                       | Server RAM  | Separate Redis server                    |
+| Speed                         | Very fast   | Fast (network call required)             |
+| Shared across servers         | ❌ No        | ✅ Yes                                    |
+| Survives application restart  | ❌ No        | ✅ Yes (depending on Redis configuration) |
+| Suitable for single server    | ✅ Yes       | ✅ Yes                                    |
+| Suitable for multiple servers | ❌ No        | ✅ Yes                                    |
+
 
 
 ---------------------------------------------------------------
 // second highest salary
+
 select * from Employee e1 where 2 = (select count(*)from Employee e2 where e1.Salary > e2.Salary);
 
 DENSE_RANK() (Recommended) - first inner qouery work then pass to outer query
@@ -1797,7 +2125,7 @@ SELECT *
 FROM
 (
     SELECT *,
-           DENSE_RANK() OVER(ORDER BY Salary DESC) AS SalaryRank
+    DENSE_RANK() OVER(ORDER BY Salary DESC) AS SalaryRank
     FROM Employee
 ) AS Emp
 WHERE SalaryRank = 2;
@@ -1853,6 +2181,7 @@ static void SendEmail(double amount)=> Console.WriteLine("Send Email");
 
 
 ------------------------------------------------------------------------------------
+											checked and unchecked in c#
 
 int a= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
 int b= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
@@ -1872,7 +2201,7 @@ int c = (unchecked)a+b;   // unchecked keyword check data is overflow still bypa
 Note : when used join when we have two table and more and e store foreign key of id if other primary key table but we want to show name and other propery if id match used
 join for multiple table/
 
-if i have three table customer, order , producy
+if i have three table customer, order , product
 
 now  i need to find customer who buys or order only 1 category of product
 
@@ -1899,13 +2228,13 @@ How did you identify the solution?
 Since the result is customer-wise, I grouped by customer. The requirement is based on product categories, not the number of products, 
 so I counted distinct categories using COUNT(DISTINCT p.Category). Finally, I filtered customers having exactly one distinct category.
 
--------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ACID 
 Atomicity = all in one if bankA trnasfer money to bankB failed them amount substraction from BankA should be rollback against
 Conssitency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
 Isolation = when transaction from bank A to bankB perform no one should stop ir not gonna impact from outside
 Durability = transaction done then save it
--------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 															Threading
 															
 - if you run programme parallelly . 
@@ -1935,6 +2264,8 @@ Durability = transaction done then save it
 
 --------------------------------------------------------------------------------------------------------------------------------------
 														Collections
+													------------------
+													
 - Array size is fixed and contain same datatype element .
   Ex: string[] str = new string[10];  // 10 length size is fixed
   
@@ -1943,6 +2274,7 @@ Durability = transaction done then save it
 -                                                    Generic collections
 
  - separate logic from datatype assign datatype at runtime to increase reusability
+ 
  - below logic write compare function for compare data wheter it is int or string
  
  class program
@@ -1954,6 +2286,8 @@ Durability = transaction done then save it
 	check<string checkedobj = new check();
 	checkedobj.check("HII","HII");
  }
+ 
+ // create generic method 
   
  class check<unknown>
 {
@@ -1979,7 +2313,8 @@ Durability = transaction done then save it
  - ICollection  = browse + count collections
  - IList = broswe + count +add + remove
   
-  ------------------------------------------------
+  -----------------------------------------------------------------------------------------------------------------------------
+  ** difference IEnumerable vs IQuerable
   
   - IEnumerable = reads all from from sql server then apply filter at client side
   - Example : 
@@ -1992,11 +2327,8 @@ Durability = transaction done then save it
     IQuerable<Employee> empListRead = dbcontext.empList;   // read and apply filter where empID=1 in sql query
 	IEnumerable<Employee> a = dbcontext.empList.where(a=>a.empId==1).toList();
   
-  ---------------------
-  questions
-  [  should end  ] not ) or } check in programme hint use stack
   
-  ------------------------------------------------------------------------------------------------
+  ------------------------------------------------------------------------------------------------------------------------
   
   How to apply cors policy
   
@@ -2015,8 +2347,6 @@ Given an array , find the maximum element and increment it by 1 , repeat k times
 example : [1,3,2], k=2
 steap 1 : [1,4,2]
 step 2 : [1,5,2]
-
-
 
 
 step 1> find max element of an array
@@ -2107,6 +2437,7 @@ delete cookies
 Response.Cookies.Delete(somekey);
 
 ---------------------------------------
+Programme :
 second highest value of an array ?
 Hint first find hishest and second highest value then check highest value is not equal to second highest
 
@@ -2147,6 +2478,8 @@ for(int i=o;i<arr.length-1;i++)
 
 -----------------------------------------------------
 
+Window function in sql server
+
 select row_number() over(order by customerName) as orderCustomerName from tblCustomer;
 // create new number
 select row_number() over (partion by customerName order by customerName) as orderCustomerName from tblCustomer;
@@ -2168,6 +2501,25 @@ begin
 	insert into tble(LastUpdate) value(GetDate);
 
 end
+
+
+after create trigger how it called
+
+INSERT command
+      │
+      ▼
+Employee table receives new row
+      │
+      ▼
+Database checks for triggers
+      │
+      ▼
+AFTER INSERT trigger found
+      │
+      ▼
+Trigger executes automatically and store value in tble
+
+
 
 -------------------------------------------------
 // inner join - matching records of both table
@@ -2203,7 +2555,31 @@ having age>35
 
 find employee whos birthday on this month
 
-select dateName(MM,e.DOB),count(*) NOE from tblEmployee;
+SELECT
+    DATENAME(MONTH, DOB) AS BirthMonth,
+    COUNT(*) AS NoOfEmployees
+FROM tblEmployee
+GROUP BY DATENAME(MONTH, DOB), MONTH(DOB);
+
+
+-- Show employee names and birthday
+
+SELECT EmployeeId,
+       EmployeeName,
+       DOB
+FROM tblEmployee
+WHERE MONTH(DOB) = MONTH(GETDATE());
+
+
+-- Count employees having birthdays this month
+
+SELECT COUNT(*) AS NoOfEmployees
+FROM tblEmployee
+WHERE MONTH(DOB) = MONTH(GETDATE());
+
+
+-- Find Age of Employee 
+Hint use CTE
 
 with CTE -
 
@@ -2218,23 +2594,6 @@ next 1 rows only
 
 
 ---------------------------
-
-Roles and Responsibility
-
-gather information of project with BA team
-creatre sprint with technical manager and producy owner on jira
-inside sprint create task nd subtask assign with time and add flowchart and algorith step and images upload on this task with tech lead
-daily sprint meeting accept task given by manager and team lead
-start development by converting figma design to actual design by suing html ,cc, angular for html , css take help og designer team
-after development assign to Qa for testing this task
-if bug rasied by QA inside task this story again assign to me with raised bug by QA team
-solve this issue with add ROC if this big or add description  then deployment code to development ina zure via visual stuido code 
-after development it trigger to QA envirnonment inform Qa team and assign this story to QA again
-take meeting with other team if anything happen setup war room for major bug 
-
-
-19 Dec 2022
-.Net Full Stack Developer
 -----------------------------------------------------------------------------------------
 prime no = divive by 1 and itself
 
@@ -2268,6 +2627,27 @@ search for connectionstrings and you get access string inside we get connections
 - ** Azure file upload in one go and blob upload or downlod in chunks
 
 -- azure quesue we read and message delete if we want to consume then use peek
+
+Azure Storage Account provides multiple storage services:
+
+Azure Storage Account
+│
+├── Blob Storage
+├── File Shares
+├── Queue Storage
+└── Table Storage
+
+
+Blob Storage is used for:
+
+Images
+Videos
+PDFs
+Excel files
+Documents
+Backups
+
+
 
 Azure Functions
 ----------------
@@ -2691,36 +3071,45 @@ Ex : "listen"	"silent"  : true
 
 "aabc"	"abbc"	:false
 
-anagram = having same length  and same frequency  + ASCII
+
+listen  -> silent  ✅
+
+aabc    -> abbc    ❌
+
+triangle -> integral ✅
+
+Two strings are anagrams if:
+
+Same length
+Same characters
+Same frequency of each character
 
 
 bool CheckAnagram(string s, string t)
 {
-    // 1. Length check
+    // Step 1: Length check
     if (s.Length != t.Length)
     {
         return false;
     }
 
-    // 2. Frequency array for ASCII (0-255)
+    // Step 2: ASCII frequency array
     int[] ch = new int[256];
 
     for (int i = 0; i < s.Length; i++)
     {
-        ch[s[i]]++;  // count chars in s
-        ch[t[i]]--;  // un-count chars in t
-    }
+        ch[s[i]]++;   // Increase frequency of s string array
+        ch[t[i]]--;   // Decrease frequency of t string array
+    } 
 
-    // 3. Check if all counts are zero
+    // Step 3: Check frequencies
     for (int i = 0; i < ch.Length; i++)
     {
         if (ch[i] != 0)
-        {
-            return false;  // mismatch found
-        }
+            return false;
     }
 
-    return true;  // all zero → anagram
+    return true;
 }
 
 -----------------------------
@@ -2780,11 +3169,13 @@ ngAfterViewInit()
 Ex: 
 
 parent component
+----------------
 
 <app-child #projectcontent></app-child>
 
 
 child component html
+------------------
 
 <ng-content>
 
@@ -3024,10 +3415,62 @@ public async Task<IActionResult> UpdateEmployee(NETEmployee employee)
 Example : 
 	var employee = _context.Employee.AsNoTracking().ToListAsync();
 	
+	--------------------------------
+	
+Question : Immediate Execution vs Deferred Execution in Entity Framework Core ?
+
+
+What is Deferred Execution?
+
+Definition:
+
+Deferred execution means the SQL query is NOT sent to the database immediately. The query is built in memory and executes only when the data is actually needed.
+
+Hint : toList() is not applied 
+
+Example:
+
+var employees = context.Employees
+                       .Where(e => e.Salary > 50000);
+
+At this point:
+
+❌ No SQL query has been executed.
+EF Core has only created an IQueryable.
+
+Execution happens here:
+
+var result = employees.ToList();
+
+Now EF Core generates SQL like:
+
+SELECT *
+FROM Employees
+WHERE Salary > 50000;
+
+
+Immediate Execution
+
+Immediate execution means the query is executed immediately because you've requested the data.
+
+Example:
+
+var employees = context.Employees
+                       .Where(e => e.Salary > 50000)
+                       .ToList();
+					   
+As soon as ToList() is called:
+
+✅ SQL is sent to SQL Server.
+✅ Data is fetched.
+✅ Results are stored in memory.
+	
 
 
 ---------------------------------------------------------------------------------------------------
 																	**	Angular pipes **
+																	----------------------
+																	
 Pipes in Angular are used for data transformation in the template. there are two types of pipes pure and impure , By default, pipes are Pure, 
 meaning they only execute when the input reference changes, which is highly optimized. 
 Impure pipes -: 
@@ -3036,6 +3479,99 @@ they should be used cautiously as they can significantly impact performance in l
 
 Ex: DatePipe  , uppercase pipe are pure pipes
 asyncPipe , custom searched  pipes are impure pipes every time change detection cycle worked
+we have ng2-search-filter something pipe inbuild in npm packages it is impure pipe
+A search/filter pipe needs to re-run whenever:
+
+The search text changes.
+The contents of the array change.
+
+Example  : 
+npm install ng2-search-filter
+
+import { Ng2SearchPipeModule } from 'ng2-search-filter';
+
+html
+--------
+<input
+  type="text"
+  [(ngModel)]="searchText"
+  placeholder="Search">
+
+<ul>
+  <li *ngFor="let user of users | filter:searchText">
+    {{ user.name }}
+  </li>
+</ul>
+
+
+
+impure pipe blocks
+
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({
+  name: 'filter',
+  pure: false // This makes it an impure pipe.
+})
+export class FilterPipe implements PipeTransform {
+
+  transform(items: any[], searchText: string): any[] {
+
+    if (!searchText) {
+      return items;
+    }
+
+    return items.filter(item =>
+      item.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }
+}
+
+
+| Pure Pipe                                           | Impure Pipe                                          |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| `pure: true` (default)                              | `pure: false`                                        |
+| Runs only when input reference changes              | Runs on every change detection cycle                 |
+| Better performance                                  | Lower performance                                    |
+| Suitable for formatting (currency, date, uppercase) | Suitable for filtering/searching mutable collections |
+
+
+Q: Why are search/filter pipes usually impure?
+
+Answer: Because the filtered result needs to update whenever the search text or collection changes. A pure pipe only runs when its input references change, 
+whereas an impure pipe runs on every change detection cycle. However, for large applications,
+ filtering in the component (using RxJS or signals) is generally preferred over an impure pipe for better performance.
+ 
+ 
+ 
+ Should you use an impure search pipe?
+
+In production, usually no.
+
+Filtering in an impure pipe means the filter logic runs on every change detection cycle, which can become expensive for large lists.
+
+A better Angular approach is to filter in the component using RxJS or signals.
+
+
+Angular 17–22, use signals:
+
+
+users = signal<User[]>([]);
+searchText = signal('');
+
+filteredUsers = computed(() =>
+  this.users().filter(user =>
+    user.name.toLowerCase().includes(this.searchText().toLowerCase())
+  )
+);
+
+
+Then in the template:
+
+@for (user of filteredUsers(); track user.id) {
+  <div>{{ user.name }}</div>
+}
+
 
 ----------------------------------------------
 // find unique records not contain duplicate records 
@@ -3066,33 +3602,13 @@ var duplicates = nums
 
 -------------------
 
- -- task.whenall() :
- 
-// GOOD: Parallel — all start together, wait once. Max time = longest task (1.5s)
-public async Task<DashboardData> LoadDashboardParallel()
-{
-    // Fire all three immediately — they run concurrently
-    var partnersTask = _partnerService.GetPartnersAsync();
-    var transactionsTask = _txnService.GetSummaryAsync();
-    var kycTask = _kycService.GetStatusAsync();
-    
-    // Wait for ALL to complete — single await, single exception point
-    await Task.WhenAll(partnersTask, transactionsTask, kycTask);
-    
-    // All tasks done, extract results
-    return new DashboardData 
-    { 
-        Partners = partnersTask.Result,        // ✅ Safe — completed
-        Transactions = transactionsTask.Result,
-        KycStatus = kycTask.Result
-    };
-} 
-Start all three, then WhenAll waits once. Time = longest task, not sum. On our Azure-hosted microservices, 
-this was the difference between a snappy dashboard and a timeout."
 
 -----------------------------
 To monitor LINQ query execution and generated SQL, I enabled EF Core logging in Program.cs while registering DbContext using LogTo(Console.WriteLine). 
-This helps print SQL queries and execution-related details in the console. Additionally, for exact execution timing, we can use Stopwatch or SQL Profiler.”
+This helps print SQL qall
+
+
+ueries and execution-related details in the console. Additionally, for exact execution timing, we can use Stopwatch or SQL Profiler.”
 
 how we do this
 -------------------------------------------------------------------------------------------------------------------------------
@@ -3155,7 +3671,7 @@ practical exmaple when dropdown required only two properties id,name but in resp
 
 getJsonUser()
 {
-	return thid.http.get('https://jsonplaceholder.typiecode.users')
+	return this.http.get('https://jsonplaceholder.typiecode.users')
 		.pipe(tap((userList:any)=>{
 			console.log($"We get whole response ${userList}");
 			this.userList = userList; // store response
@@ -3951,7 +4467,7 @@ export class ChildComponent {
 this.employees.push(newEmployee);
 
 // RIGHT - New reference triggers OnPush
-this.employees = [...this.employees, newEmployee];
+this.employees = [...this.employees, 0];
 
 -----------------------
 
@@ -4373,7 +4889,7 @@ let totalSalary = employees.reduce(
 
 console.log(totalSalary);
 
----------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 If you create component and called its selector inside its own html what error you get in Angular 22?
 
@@ -4506,8 +5022,9 @@ Usage:
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 																				Azure
+																			   =======
 																				
-- follow pay as you go model
+- follow pay as you go model .
 - it cloud platform where we deploy and host application .
 
 
@@ -4517,7 +5034,7 @@ IAAS (Infrastruture as Server) -: like virtual maching we can install all those 
 PASS (Platform as Serverce) -: Deply web app in App Service later it check for virtual machine we dont need to check for that manually .
 SASS (Software) -: microsoft 365 and other Software .
 
-----------------------------
+------------------------------------------------------------------------
 
 										scaling in Azure
 
@@ -4525,20 +5042,18 @@ SASS (Software) -: microsoft 365 and other Software .
 1: Scale Up (App Service Plan) : vertical scaling here change existing machine to new machine by change subscription plan  i.e basic to standard
 2: Scale Down (App Service Plan) : horizontal Scaling here we add new instance i.e m/c instead change existing machine . 
 
------------------------------------
+------------------------------------------------------------
 
 firstname middlename  sirname
 after adding this filed 
 full name is filled automatically .
 
---------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
 Why Generic Repository?
 
 Answer:
-
 Generic Repository helps reduce duplicate CRUD code. Instead of creating separate repositories for Product, Category, Customer, etc., 
 we write CRUD logic once and reuse it for all entities.
-
 
 
 "Would you always use Generic Repository with EF Core?"
@@ -4548,10 +5063,12 @@ A strong answer is:
 "Not always. EF Core already implements Repository and Unit of Work patterns through DbSet<T> and DbContext. For simple applications I often use EF Core directly. For large enterprise applications where I want abstraction, testability, or shared CRUD logic, 
 I may use a Generic Repository combined with specialized repositories for complex queries."
 
----------------------------------------------------------------------'
+--------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-															CRUd operation perform step by step
+															CRUD operation perform step by step
+															===================================
+															
 															
 1> crete model class 
 
@@ -5689,11 +6206,365 @@ Answer -:
 	}
 
 	OutPut: Compiled sucessfully
+	
+	
+	
+Question > How do you optimize a stored procedure?
+	
+1: Analyze the execution plan.
+2: Check for missing or inefficient indexes.
+3: Avoid SELECT *.
+4: Rewrite queries to be SARGable (avoid functions on indexed columns in WHERE).
+5: Reduce unnecessary scans, sorts, and joins.
+6: Replace cursors with set-based operations where possible.
+7: Use EXISTS instead of COUNT for existence checks.
+8: Return only the required rows and columns.
+9: Investigate parameter sniffing if performance varies by parameter.
+10: Keep transactions short and maintain indexes/statistics.
 
+
+Lets discuss .
+
+1. Check the Execution Plan (Most Important)
+
+This should always be your first step.
+
+SELECT *
+FROM tblEmployee
+WHERE DepartmentId = 5;
+
+Press:
+
+Ctrl + M
+
+or enable Include Actual Execution Plan.
+
+Look for:
+
+Table Scan ❌
+Index Scan ⚠️
+Index Seek ✅
+Missing Index ⚠️
+Expensive operators (Sort, Hash Match, Nested Loop)
+
+
+
+2. Create Proper Indexes
+
+Suppose:
+
+SELECT *
+FROM tblEmployee
+WHERE DepartmentId = 5;
+
+// here DepartmentId is primary key of Table tblEmployee
+
+
+3. Never use SELECT *
+
+Bad
+
+SELECT *
+FROM tblEmployee;
+
+
+Good
+
+SELECT EmployeeId,
+       EmployeeName,
+       Salary
+FROM tblEmployee;
+
+
+Reading fewer columns means:
+
+Less disk I/O
+Less network traffic
+Less memory
+
+
+4. Avoid Functions in WHERE Clause
+
+Bad
+
+WHERE YEAR(DateOfBirth)=2025
+
+SQL Server must compute YEAR() for every row, so indexes on DateOfBirth can't be used efficiently.
+
+Good
+
+WHERE DateOfBirth >= '2025-01-01'
+AND DateOfBirth < '2026-01-01'
+
+This allows an index seek.
+
+
+5. Avoid Leading Wildcards
+
+Bad
+
+WHERE Name LIKE '%John%'
+
+Usually results in a table/index scan.
+
+Better
+
+WHERE Name LIKE 'John%'
+
+This can use an index.
+
+
+6. Avoid Cursors When Possible
+
+Bad
+
+CURSOR
+
+Processes rows one at a time (RBAR: Row By Agonizing Row).
+
+Better
+
+UPDATE tblEmployee
+SET Salary = Salary + 1000
+WHERE DepartmentId = 5;
+
+Set-based operations are almost always faster.
+
+
+7. Return Only Required Rows
+
+Bad
+
+SELECT *
+FROM tblEmployee;
+
+Good
+
+SELECT TOP 100 *
+FROM tblEmployee;
+
+
+or use paging:
+
+OFFSET 0 ROWS
+FETCH NEXT 20 ROWS ONLY;
+
+
+8. Avoid Unnecessary Temp Tables
+
+Sometimes developers do:
+
+SELECT *
+INTO #Temp
+FROM tblEmployee;
+
+If the temporary table isn't needed, query the original table directly.
+
+Use temp tables only when they simplify or improve performance.
+
+
+
+9. Use EXISTS Instead of COUNT (When Checking Existence)
+
+Bad
+
+IF (
+    SELECT COUNT(*)
+    FROM tblEmployee
+    WHERE EmployeeId = 10
+) > 0
+
+Good
+
+IF EXISTS
+(
+    SELECT 1
+    FROM tblEmployee
+    WHERE EmployeeId = 10
+)
+
+
+10. Avoid Unnecessary DISTINCT
+
+Bad
+
+SELECT DISTINCT EmployeeName
+FROM tblEmployee;
+
+DISTINCT often forces a sort or hash operation.
+
+Only use it when duplicates truly need to be removed.
+
+
+
+11. Use Proper JOINs
+
+Instead of:
+
+SELECT *
+FROM Employee, Department
+WHERE Employee.DepartmentId = Department.DepartmentId;
+
+
+Use:
+
+SELECT *
+FROM Employee E
+INNER JOIN Department D
+ON E.DepartmentId = D.DepartmentId;
+
+This is clearer and avoids accidental Cartesian products.
+
+
+
+12. Avoid Repeated Queries
+
+Bad
+
+SELECT Name
+FROM Employee
+WHERE EmployeeId = 1;
+
+SELECT Salary
+FROM Employee
+WHERE EmployeeId = 1;
+
+
+Good
+
+SELECT Name,
+       Salary
+FROM Employee
+WHERE EmployeeId = 1;
+
+One trip instead of two.
+
+
+
+
+question > Function vs Stored Procedure
+
+
+| Feature                                 | Function                                                   | Stored Procedure                     |
+| --------------------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| Purpose                                 | Returns a value                                            | Performs an action or business logic |
+| Return Type                             | **Must** return a value                                    | May or may not return a value        |
+| Can return table?                       | ✅ Yes (Table-Valued Function)                              | ❌ No (returns result sets instead)   |
+| Parameters                              | Input parameters only                                      | Input and Output parameters          |
+| Can modify data (INSERT/UPDATE/DELETE)? | ❌ No (SQL Server functions cannot modify permanent tables) | ✅ Yes                                |
+| Can call transaction?                   | ❌ No                                                       | ✅ Yes                                |
+| TRY...CATCH                             | ❌ No                                                       | ✅ Yes                                |
+| Can call another procedure?             | ❌ No                                                       | ✅ Yes                                |
+| Can be used inside SELECT?              | ✅ Yes                                                      | ❌ No                                 |
+| Can be used in WHERE clause?            | ✅ Yes                                                      | ❌ No                                 |
+| Execution                               | Called as part of a query                                  | Executed using `EXEC` or `EXECUTE`   |
+| Best for                                | Calculations, reusable logic                               | CRUD operations, business workflows  |
+
+
+
+Function Example
+
+Suppose you want to calculate bonus.
+
+CREATE FUNCTION fn_CalculateBonus
+(
+    @Salary DECIMAL(10,2)
+)
+RETURNS DECIMAL(10,2)
+AS
+BEGIN
+    RETURN @Salary * 0.10;
+END
+
+
+Use it like this:
+
+SELECT
+    EmployeeName,
+    Salary,
+    dbo.fn_CalculateBonus(Salary) AS Bonus
+FROM tblEmployee;
+
+
+Output
+
+Employee     Salary     Bonus
+--------------------------------
+John         50000      5000
+Amit         60000      6000
+
+Notice how the function behaves like a built-in SQL function such as UPPER() or LEN().
+
+
+
+Stored Procedure Example
+
+
+CREATE PROCEDURE sp_GetEmployees
+AS
+BEGIN
+    SELECT *
+    FROM tblEmployee;
+END
+
+
+Execute it:
+
+EXEC sp_GetEmployees;
+
+
+Stored Procedure with Parameter
+
+CREATE PROCEDURE sp_GetEmployeeById
+    @Id INT
+AS
+BEGIN
+    SELECT *
+    FROM tblEmployee
+    WHERE EmployeeId = @Id;
+END
+
+
+Execute:
+
+Execute:
+
+
+Stored Procedure with Output Parameter
+
+
+CREATE PROCEDURE sp_GetEmployeeCount
+    @Count INT OUTPUT
+AS
+BEGIN
+    SELECT @Count = COUNT(*)
+    FROM tblEmployee;
+END
+
+
+Execute:
+
+
+DECLARE @Total INT;
+
+EXEC sp_GetEmployeeCount @Total OUTPUT;
+
+SELECT @Total;
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 											SOLID Principle
 											--------------
 											--------------
+											
+											
 	- SOLID are 5 basic principles which help to create good software architecture . SOLID is an acronym
 	- Design patteren is time tested solution for oops Environment problem : singleton , publisher/subscriber , DI , Repositery patteren
 
@@ -6044,3 +6915,6 @@ public class Enquiry :  Customer
             }
         }
     }
+
+
+----------------------------------------------------------------------------------------------
