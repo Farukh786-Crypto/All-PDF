@@ -42,7 +42,7 @@ signalR
 payment gateway ()
 otp code
 Authorization role, filter
-
+Unit testing
 
 
 Angular 
@@ -72,6 +72,1102 @@ azure functions
 
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+												** Feature Module in Angular **
+												
+Feature module ≠ lazy-loaded module.
+
+A feature module is a module that groups functionality for one business/feature area.
+
+For example:
+
+EmployeeModule
+    ├── EmployeeComponent
+    ├── EmployeeService
+    └── EmployeeRoutingModule
+	
+That's a feature module because it represents the Employee feature.
+
+It can be eagerly loaded
+
+You could import it directly:
+
+@NgModule({
+  imports: [
+    EmployeeModule
+  ]
+})
+export class AppModule {}
+
+Then it's a feature module, but not lazy loaded.
+
+Or it can be lazy loaded
+
+{
+  path: 'employee',
+  loadChildren: () =>
+    import('./employee/employee.module')
+      .then(m => m.EmployeeModule)
+}
+
+
+Now the same EmployeeModule is:
+
+feature module + lazy-loaded module.
+
+So remember
+
+Feature Module
+      │
+      ├── Eagerly loaded
+      │
+      └── Lazy loaded
+
+Feature describes what the module contains.
+
+Lazy loading describes when Angular loads it.
+
+That's the distinction.
+
+---------------------------------------------
+
+												** Lazy Loading in Angular  **
+												
+How do you implement lazy loading in Angular?
+- Lazy loading means loading a feature only when the user navigates to it instead of including it in the initial application bundle. In the traditional NgModule architecture.
+we use loadChildren() to lazy-load a feature module. With standalone components, we can use loadComponent() to lazy-load a standalone component.
+
+
+
+Practical implementation ?
+
+Angular lazy loading in the traditional NgModule approach first, then do the standalone approach. 
+That order is actually useful because you'll understand what Angular is doing instead of just memorizing loadComponent().
+
+
+1. Lazy loading without standalone components — NgModule approach
+
+Suppose we have:
+
+
+App
+ ├── Home
+ ├── Employee
+ └── Admin
+ 
+ 
+ 
+ We don't want Angular to load the Employee code when the application starts.
+
+Instead:
+
+Application starts
+       ↓
+Home loads
+       ↓
+User clicks Employee
+       ↓
+Employee module downloaded
+       ↓
+Employee component displayed
+
+
+Step 1 — Create Employee module
+
+ng generate module employee --route employee --module app.module
+
+This typically creates a lazy-loaded route/module structure.
+
+The important idea is that EmployeeModule is a separate bundle.
+
+Step 2 — Employee module
+
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+import { EmployeeRoutingModule } from './employee-routing.module';
+import { EmployeeComponent } from './employee.component';
+
+@NgModule({
+  declarations: [
+    EmployeeComponent
+  ],
+  imports: [
+    CommonModule,
+    EmployeeRoutingModule
+  ],
+  exports:[EmployeeComponent]
+})
+export class EmployeeModule { }
+
+Notice this is not standalone.
+
+The component belongs to:
+
+declarations: [
+  EmployeeComponent
+]
+
+
+3. Employee routing module
+
+-- here we need to use RouterModule.forChild(employeeroutes); // Lazy -load module routes array declare here
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { EmployeeComponent } from './employee.component';
+
+const employeeroutes: Routes = [
+  {
+    path: '',
+    component: EmployeeComponent
+  }
+];
+
+@NgModule({
+  imports: [RouterModule.forChild(employeeroutes)],
+  exports: [RouterModule]
+})
+export class EmployeeRoutingModule { }
+
+Here:
+RouterModule.forChild(employeeroutes)
+
+is used because this is a feature module, not the root application routing module.
+
+
+4. App routing
+
+This is the important part for lazy loading.
+
+const routes: Routes = [
+  {
+    path: 'employee',
+    loadChildren: () =>
+      import('./employee/employee.module')
+        .then(m => m.EmployeeModule)
+  }
+];
+
+
+The important property is:
+
+loadChildren
+
+Angular does not immediately load:
+
+employee.module.ts
+
+Instead it waits until the user navigates to:
+
+/employee
+
+Then Angular downloads the Employee module. first time user click
+
+
+5. What actually happens?
+
+Suppose the user opens:
+
+https://localhost:4200/
+
+Initially:
+
+main.ts
+   ↓
+AppModule
+   ↓
+AppComponent
+   ↓
+Home
+
+Employee module isn't downloaded yet.
+
+Then user clicks:
+
+Employees
+
+Angular navigates to:
+
+/employee
+
+Router sees:
+
+loadChildren: () =>
+    import('./employee/employee.module')
+        .then(m => m.EmployeeModule)
+
+Then:
+
+Browser
+   ↓
+Download EmployeeModule chunk
+   ↓
+EmployeeModule
+   ↓
+EmployeeRoutingModule
+   ↓
+EmployeeComponent
+
+That's lazy loading.
+
+
+		** standalone component lazy load **
+		
+6. Now standalone Angular
+
+Modern Angular doesn't require an NgModule for this.
+
+Instead of:
+
+loadChildren: () =>
+  import('./employee/employee.module')
+    .then(m => m.EmployeeModule)
+
+you can lazy-load the component directly:
+
+const routes: Routes = [
+  {
+    path: 'employee',
+    loadComponent: () =>
+      import('./employee/employee.component')
+        .then(c => c.EmployeeComponent)
+  }
+];
+
+Here:
+
+loadChildren
+    ↓
+Lazy-load NgModule
+
+loadComponent
+    ↓
+Lazy-load standalone component
+
+
+7. Standalone component
+
+@Component({
+  selector: 'app-employee',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './employee.component.html'
+})
+export class EmployeeComponent {
+
+}
+
+
+Then routing:
+
+const routes: Routes = [
+  {
+    path: 'employee',
+    loadComponent: () =>
+      import('./employee/employee.component')
+        .then(c => c.EmployeeComponent)
+  }
+];
+
+
+No:
+
+EmployeeModule
+EmployeeRoutingModule
+
+needed.
+
+The difference you should remember
+
+| Traditional Angular          | Standalone Angular                 |
+| ---------------------------- | ---------------------------------- |
+| `NgModule`                   | No NgModule required               |
+| `declarations`               | Component imports its dependencies |
+| `loadChildren()`             | `loadComponent()`                  |
+| Feature module loaded lazily | Component loaded lazily            |
+| `RouterModule.forChild()`    | Route configuration directly       |
+| Older/common enterprise code | Modern Angular approach            |
+
+
+--------------------------------------------------------------------------------------------------------------------
+														**	Angular Flow **
+														--------------------
+														
+Angular application flow in the traditional NgModule architecture, start with index.html.
+
+1. index.html
+       ↓
+2. main.ts
+       ↓
+3. AppModule
+       ↓
+4. AppComponent
+       ↓
+5. app.component.html
+       ↓
+6. Router
+       ↓
+7. Feature Module / Component
+
+
+after standalone 
+----------------
+
+- index.html is loaded first. It contains the root element. main.ts is the Angular entry point and calls bootstrapApplication() with the root standalone component and 
+  application configuration. The application configuration provides global providers such as routing, HttpClient and interceptors. 
+- Angular then bootstraps the root component into the root element.
+-Its template is rendered, and if it contains a router-outlet, Angular's router renders the component corresponding to the current route there.
+
+1. index.html
+       ↓
+2. main.ts
+       ↓
+3. app.config.ts
+       ↓
+4. Bootstrap AppComponent
+       ↓
+5. app.ts / AppComponent
+       ↓
+6. app.html
+       ↓
+7. Router / child components
+
+
+1. index.html
+
+The browser initially loads:
+
+<body>
+  <app-root></app-root>
+</body>
+
+
+<app-root> is the host element for your root Angular component.
+
+
+2. main.ts
+
+This is the entry point.
+
+Typical modern Angular:
+
+bootstrapApplication(AppComponent, appConfig)
+  .catch(err => console.error(err));
+  
+ Here Angular is told:
+
+Bootstrap AppComponent and use appConfig.
+
+
+3. app.config.ts
+
+This contains application-wide providers/configuration.
+
+For example:
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+    provideHttpClient(
+      withInterceptors([authInterceptor])
+    )
+  ]
+};
+
+
+So your understanding is right that things like:
+
+provideHttpClient()
+HTTP interceptors
+Router
+global providers
+
+can be configured here.
+
+But remember: main.ts uses appConfig; app.config.ts doesn't independently bootstrap the component.
+
+
+4. Root standalone component
+
+For example:
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.html'
+})
+export class AppComponent {
+}
+
+
+Angular creates this component and renders it into:
+
+<app-root></app-root>
+
+from index.html.
+
+
+5. app.html
+
+Suppose:
+
+<h1>My Application</h1>
+
+<router-outlet></router-outlet>
+
+
+The important part is:
+
+<router-outlet></router-outlet>
+
+
+The router decides which component gets rendered there.
+
+For example:
+
+/employee
+     ↓
+EmployeeComponent
+     ↓
+<router-outlet>
+
+------------------------------------------------------------------------------------------------------------------------
+															** Asp.NET Core flow **
+															
+Explain the ASP.NET Core Web API request flow with authentication and authorization.
+
+The request comes from the Angular client and, when IIS is being used as a reverse proxy, IIS forwards it to Kestrel. Kestrel passes it into the ASP.NET Core middleware pipeline. 
+Routing identifies the endpoint, authentication validates the JWT and establishes the user's identity, and authorization checks whether the user is allowed to access the endpoint,
+such as through the [Authorize] attribute. If authorization succeeds, the controller executes and calls the service,
+which calls the repository and EF Core to access SQL Server. The result travels back through the application and middleware pipeline and is returned to the Angular client
+
+                REQUEST
+                   ↓
+             Angular/Client
+                   ↓
+            IIS (if used)
+                   ↓
+                Kestrel
+                   ↓
+              Middleware
+                   ↓
+                Routing
+                   ↓
+            Authentication
+                   ↓
+             Authorization
+                   ↓
+                Filter*
+                   ↓
+              Controller
+                   ↓
+                Service
+                   ↓
+              Repository
+                   ↓
+              EF Core
+                   ↓
+              SQL Server
+                   ↓
+                BACK
+                   ↑
+              Repository
+                   ↑
+                Service
+                   ↑
+              Controller
+                   ↑
+              Middleware
+                   ↑
+                Kestrel
+                   ↑
+            IIS (if used)
+                   ↑
+             Angular
+
+Flow chart Diagram -:
+															
+                    REQUEST
+                       │
+                       ▼
+                ┌──────────────┐
+                │   Angular    │
+                │ HTTP Request │
+                └──────┬───────┘
+                       │
+                       ▼
+                ┌──────────────┐
+                │     IIS      │
+                │ Reverse      │
+                │ Proxy        │
+                └──────┬───────┘
+                       │
+                       ▼
+                ┌──────────────┐
+                │   Kestrel    │
+                │ Web Server   │
+                └──────┬───────┘
+                       │
+                       ▼
+          ┌──────────────────────────┐
+          │     Middleware Pipeline  │
+          │                          │
+          │ Exception Middleware     │
+          │ Request Logging          │
+          │ Routing                  │
+          │ Authentication           │
+          │ Authorization            │
+          └────────────┬─────────────┘
+                       │
+                       ▼
+					 Filter
+              ┌─────────────────┐
+              │   [Authorize]   │
+              │                 │
+              │ JWT valid?      │
+              │ Permission?     │
+              └───────┬─────────┘
+                      │
+              ┌───────┴────────┐
+              │                │
+             NO               YES
+              │                │
+              ▼                ▼
+          401/403          Controller
+                               │
+                               ▼
+                            Service
+                               │
+                               ▼
+                          Repository
+                               │
+                               ▼
+                           EF Core
+                               │
+                               ▼
+                         SQL Server
+                               │
+                               ▼
+                           RESPONSE
+                               │
+                               ▼
+                         Middleware
+                               │
+                               ▼
+                           Kestrel
+                               │
+                               ▼
+                             IIS
+                               │
+                               ▼
+                           Angular
+						   
+1. Angular sends JWT
+
+Suppose Angular calls:
+
+GET /api/Employees/5
+Authorization: Bearer eyJhbGciOiJIUzI1Ni...
+
+Angular sends:
+
+this.http.get<Employee>(
+  'https://localhost:7187/api/Employees/5'
+);
+
+The request leaves the browser.
+
+Angular
+   ↓
+GET /api/Employees/5
+
+
+Step 2 — IIS
+
+If your ASP.NET Core application is hosted behind IIS:
+
+Angular
+   ↓
+IIS
+
+
+IIS acts as a reverse proxy and forwards the request to the ASP.NET Core application.
+
+For development with:
+
+https://localhost:7187
+
+you may interact directly with Kestrel rather than IIS. So don't blindly say IIS is always involved.
+
+That's an important interview correction.
+
+
+Step 3 — Kestrel
+
+Kestrel is ASP.NET Core's web server.
+
+IIS
+ ↓
+Kestrel
+
+Kestrel receives the HTTP request and passes it into the ASP.NET Core application pipeline.
+
+
+step 4. Program.cs (check Authentication of http request)
+
+Your ASP.NET Core application has:
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = "PracticeAPI",
+            ValidAudience = "PracticeClient",
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes("your-secret-key"))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+
+Step 5 — Middleware
+
+Imagine you have your middleware:
+
+app.UseExceptionHandlingMiddleware();
+app.UseRequestTimingMiddleware();
+app.UseAuthentication();
+app.UseAuthorization();
+app.mapControllers();
+
+
+Remember this order
+UseAuthentication()
+        ↓
+UseAuthorization()
+        ↓
+Controller
+
+
+
+A middleware might look like:
+
+public async Task InvokeAsync(HttpContext context)
+{
+    var start = DateTime.UtcNow;
+
+    _logger.LogInformation("Request started");
+
+    await _next(context);
+
+    var elapsed = DateTime.UtcNow - start;
+
+    _logger.LogInformation(
+        "Request completed in {Time} ms",
+        elapsed.TotalMilliseconds);
+}
+
+
+This is the part you must understand deeply.
+
+
+Request
+   ↓
+middleware
+   ↓
+await _next()
+   ↓
+next middleware
+   ↓
+controller
+   ↓
+response
+   ↑
+middleware continues after await _next()
+
+
+So middleware is like a doorway:
+
+             REQUEST
+                ↓
+        ┌──────────────┐
+        │  Middleware  │
+        │              │
+        │  BEFORE      │
+        │     ↓        │
+        │  _next()     │
+        │     ↓        │
+        │  AFTER       │
+        └──────────────┘
+                ↓
+             RESPONSE
+			 
+That's why your timing middleware can measure the complete request.
+
+
+Step 5 — Routing
+
+Suppose you have:
+
+[ApiController]
+[Route("api/[controller]")]
+public class EmployeesController : ControllerBase
+{
+}
+
+and:
+
+[HttpGet("{id}")]
+public async Task<IActionResult> GetEmployee(int id)
+{
+    ...
+}
+
+
+Request:
+
+GET /api/Employees/5
+
+Routing determines:
+
+/api/Employees/5
+        ↓
+EmployeesController
+        ↓
+GetEmployee(5)
+
+
+
+Step 6 — Authentication
+
+Because you sent:
+
+Authorization: Bearer eyJ...
+
+ASP.NET Core's JWT authentication middleware validates the token.
+
+Conceptually:
+
+JWT Token
+   ↓
+Is token valid?
+   ↓
+Yes
+   ↓
+User.Identity established
+
+If invalid:
+
+401 Unauthorized
+
+
+
+Step 7 — Authorization
+
+Now suppose:
+
+[Authorize]
+[HttpGet("{id}")]
+public async Task<IActionResult> GetEmployee(int id)
+{
+}
+
+Authentication answers:
+
+Who are you?
+
+Authorization answers:
+
+Are you allowed to do this?
+
+If authenticated but not authorized:
+
+403 Forbidden
+
+
+
+The important part is:
+
+[Authorize]
+
+This means:
+
+The caller must be authenticated to access this endpoint.
+
+
+4. What happens with a valid JWT?
+
+Request:
+
+GET /api/Employees/5
+Authorization: Bearer <valid-token>
+
+Flow:
+
+
+Angular
+   ↓
+IIS
+   ↓
+Kestrel
+   ↓
+Middleware
+   ↓
+   
+ Routing
+ ↓
+UseAuthentication()
+   ↓
+JWT validated
+   ↓
+UseAuthorization()
+   ↓
+[Authorize] passes
+   ↓
+GetEmployee(5)
+   ↓
+EmployeeService
+   ↓
+Repository
+   ↓
+SQL Server
+
+
+Flow:
+
+Angular
+   ↓
+IIS
+   ↓
+Kestrel
+   ↓
+Middleware
+   ↓
+ Routing
+   ↓
+UseAuthentication()
+   ↓
+JWT validated
+   ↓
+UseAuthorization()
+   ↓
+[Authorize] passes
+   ↓
+GetEmployee(5)
+   ↓
+EmployeeService
+   ↓
+Repository
+   ↓
+SQL Server
+
+
+Then:
+
+SQL Server
+   ↓
+Repository
+   ↓
+Service
+   ↓
+Controller
+   ↓
+200 OK
+   ↓
+Middleware
+   ↓
+Kestrel
+   ↓
+IIS
+   ↓
+Angular
+
+
+6. What if JWT is valid but user isn't allowed?
+
+This is where authentication and authorization differ.
+
+Imagine:
+
+[Authorize(Roles = "Admin")]
+[HttpDelete("{id}")]
+public async Task<IActionResult> DeleteEmployee(int id)
+{
+    ...
+}
+
+
+The JWT is valid:
+
+Authentication
+      ↓
+Valid JWT
+      ↓
+User = Farukh
+      ↓
+Authorization
+      ↓
+Does user have Admin role?
+
+If:
+
+Admin = NO
+
+then:
+
+403 Forbidden
+
+Again, controller doesn't execute.
+
+Remember 401 vs 403
+
+This is a common interview question.
+
+401
+
+Who are you?
+
+Authentication failed.
+
+Examples:
+
+No token
+Invalid token
+Expired token
+403
+
+I know who you are, but you're not allowed to do this.
+
+Authentication succeeded but authorization failed.
+
+Example:
+
+Valid JWT
+User = Employee
+Endpoint requires Admin
+
+Therefore:
+
+401 → Authentication problem
+403 → Authorization problem
+								
+
+3. Controller
+
+Now we protect the endpoint:
+
+[ApiController]
+[Route("api/[controller]")]
+public class EmployeesController : ControllerBase
+{
+    [Authorize]
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetEmployee(int id)
+    {
+        var employee =
+            await _employeeService.GetEmployeeIdAsync(id);
+
+        return Ok(employee);
+    }
+}
+
+Controller should not contain all your business logic.
+
+It delegates:
+
+Controller
+    ↓
+EmployeeService
+
+
+Step 9 — Service
+
+Your existing service:
+
+public async Task<EmployeeDTO?> GetEmployeeIdAsync(int id)
+{
+    if (id <= 0)
+    {
+        throw new ArgumentException(
+            "Employee ID must be greater than zero.");
+    }
+
+    var employee =
+        await _employeeRepositories.GetEmployeeByIdAsync(id);
+
+    return employee;
+}
+
+So:
+
+Controller
+     ↓
+EmployeeService
+
+The service handles business/application logic.
+
+Step 10 — Repository
+
+Then:
+
+var employee =
+    await _employeeRepositories.GetEmployeeByIdAsync(id);
+
+Repository accesses the database:
+
+Service
+   ↓
+Repository
+   ↓
+EF Core
+   ↓
+SQL Server
+
+For example:
+
+var employee = await _databaseContext.employees
+    .AsNoTracking()
+    .FirstOrDefaultAsync(x => x.empId == id);
+	
+	
+Step 11 — SQL Server
+
+SQL Server executes the query and returns the employee.
+
+SQL Server
+    ↓
+Employee record
+
+Then everything travels back:
+
+SQL Server
+    ↓
+Repository
+    ↓
+Service
+    ↓
+Controller
+    ↓
+Middleware
+    ↓
+Kestrel
+    ↓
+IIS
+    ↓
+Angular
+
+
+--------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -111,7 +1207,7 @@ builder.app.UseMiddeware<customeTimeCheck>();
 different types of DI in asp.net core web api
 
 
-builder.services.AddScope();  per request object instance is created ex like dbcontext
+builder.services.AddScope();  per request object instance is created ex like dbcontext ,  Repository
 
 
 public IActioncontroller HomeControe(customer obj1 , customer obj2) 
@@ -121,7 +1217,7 @@ builder.services.AddTranscient<>();    every you inject object instance is creat
 builder.Services.AddSingleton<>();   only one object instance create for whole application Ex like configuration
 
 --------------------------------------------------------------------------------------------
-																JWT
+																JWT (Json Web Token)
 
 1. Client sends credentials to the server. i.e pass username and password 
 2. Server respons backs with a token .
@@ -129,7 +1225,7 @@ builder.Services.AddSingleton<>();   only one object instance create for whole a
 
 
 why it is called JWT Token ?
-JWT stands for (Json Web Based Token) . JSON stands for Javascript Object notation . JSON is data format with name and value so we receive token in JSON Format  so it termed as 
+JWT stands for (Json Web Based Token) . JSON stands for (Javascript Object notation) . JSON is data format with name and value so we receive token in JSON Format  so it termed as 
 Json Token .
 
 
@@ -142,6 +1238,9 @@ type     		Role  / rights
 
 
 Claims - it talks about what roles and rights the user has with respect to the system.
+Issuer : who issued this token
+Audiency : issuer issued this token for this audience
+expiryTime
 
 
 Authentication talks about who is the user i.e check in database user is present or not ?
@@ -304,10 +1403,11 @@ If using cookies, you should also understand and mitigate CSRF (for example, usi
 Interviewer: How do you read an HttpOnly cookie in Angular?
 Correct Answer:
 You can't. An HttpOnly cookie is intentionally inaccessible to JavaScript. The browser stores it and automatically includes it in requests to the server.
+                                               --------------------------
  Angular only needs to send requests with withCredentials: true when required.
 
 
-Question : after login successfull you go to dashboard if you click back button you are goin back to login page again we dont want that ?
+Question : after login successfully you go to dashboard if you click back button you are goin back to login page again we dont want that ?
 The "Login → Dashboard" Pattern
 This is the classic real-world use case. After authentication, you don't want users hitting back and returning to the login screen.
 
@@ -358,7 +1458,6 @@ Back button won't show the login page because of replaceUrl.
 Even typing /login manually redirects to the dashboard.
 
 
-
 Question: Access Token vs Refresh Token ?
 - Access Token (JWT Token) are token which helps you to access a secure resource  while refresh token helps you to get new Token.
 
@@ -372,6 +1471,10 @@ Question: Access Token vs Refresh Token ?
 				|	1. username and password passed						|
 				|-------------------->-------->-------->---------------	|
 				|														|
+				| (if username password failed then 401 or no rights 403)|
+				|---------<-------<----------------<--------------------|														|	|
+				|														|
+				|				if success										|
 				|----------<---------<---------------------------------	|
 				|   2. get Jwt token and Refresh Token(RT)				|
 				|														|
@@ -478,11 +1581,11 @@ facebook like sso)
  tried to explain who is the user (authentication like register user using this ) and Resource server (our project)
  -  we just need to check user is existed in your system or not like shopping sites and mobile application ,single sign etc
  
- ┌─────────────┐                    ┌─────────────────────┐                    ┌─────────────┐
-│   Angular   │  1. "Who is this?"  │   OpenID Provider   │  2. "It's Alex"    │   .NET Core │
-│   (Client)  │ ──────────────────>  │  (Azure AD, Google, │ ──────────────────>  │  (Resource  │
-│             │                    │   Facebook, Azure    │                    │   Server)   │
-│             │                    │   B2C, IdentitySrv)  │                    │             │
+┌─────────────┐                    ┌─────────────────────┐                    ┌─────────────┐
+│   Angular   │  1. "Who is this?" │   OpenID Provider   │  2. "It's Alex"    │   .NET Core │
+│   (Client)  │ ──────────────────>│  (Azure AD, Google, │ ──────────────────>│  (Resource  │
+│             │                    │   Facebook, Azure   │                    │   Server)   │
+│             │                    │   B2C, IdentitySrv) │                    │             │
 └─────────────┘                    └─────────────────────┘                    └─────────────┘
  
 Real-world analogy: Showing your passport at airport security. They verify your identity but don't care what flight you're on.
@@ -504,10 +1607,10 @@ Note : scope is roles in identity server .
 				
 				
 ┌─────────────┐                    ┌─────────────────────┐                    ┌─────────────┐
-│   Angular   │  1. "Can I access   │   Authorization     │  2. "Here's a      │   .NET Core │
-│   (Client)  │     user's Gmail?"  │   Server (Google)   │     token with     │  (Gmail API │
-│             │                     │                     │     scopes"          │   = Resource│
-│             │                     │                     │                     │   Server)   │
+│   Angular   │  1. "Can I access  │   Authorization     │  2. "Here's a      │   .NET Core │
+│   (Client)  │     user's Gmail?" │   Server (Google)   │     token with     │  (Gmail API │
+│             │                    │                     │     scopes"        │   = Resource│
+│             │                    │                     │                    │   Server)   │
 └─────────────┘                    └─────────────────────┘                    └─────────────┘
                               3. Token has scopes: [read_email, send_email]
 							  
@@ -520,10 +1623,10 @@ Example : Identity Server is free opensource server which helps to implement ope
 This is what you use for internet-facing websites.
 
 ┌─────────────┐                    ┌─────────────────────┐                    ┌─────────────┐
-│   Angular   │  1. "I need Alex's  │   Identity Server   │  2. ID Token +     │   .NET Core │
-│   (Client)  │     identity AND    │   (Duende, Azure    │     Access Token    │  (Your API  │
-│             │     permission to     │   B2C, Auth0,       │     (with scopes)   │   = Resource│
-│             │     access API"       │   Keycloak)         │                     │   Server)   │
+│   Angular   │  1. "I need Alex's │   Identity Server   │  2. ID Token +     │   .NET Core │
+│   (Client)  │     identity AND   │   (Duende, Azure    │     Access Token   │  (Your API  │
+│             │     permission to  │   B2C, Auth0,       │     (with scopes)  │   = Resource│
+│             │     access API"    │   Keycloak)         │                    │   Server)   │
 └─────────────┘                    └─────────────────────┘                    └─────────────┘
 				
 				
@@ -574,7 +1677,6 @@ below for serve section
             "development": {
               "buildTarget": "User.Management.UI:build:development"
             }
-
 
 			  
 step 4> called this import in service called bydefault environemtn.ts only not other they called 
@@ -761,7 +1863,7 @@ for(int i=0;i<=arr.length;i++)
 -----------------------
 two pointer approach
 
-letf = 0;
+left = 0;
 right  = arr.length -1;
 
 while(left<right)
@@ -786,6 +1888,22 @@ create table #Dest(
   id varchar(max),
   amount Desc(10,2)
 );
+
+
+Window function in sql server
+
+select row_number() over(order by customerName) as orderCustomerName from tblCustomer;
+// create new number
+select row_number() over (partion by customerName order by customerName) as orderCustomerName from tblCustomer;
+
+// assign some unique value to the customername value  
+// Ex : if rajesh come two time assign only only value to him
+
+select rank() over(order by customerName) as ordercustomerName from tblCustomer;
+
+// above rank() probelm id it create gap while assign unique value to avoid this dense_rank() is used
+select dense_rank() over(order by customerName) as OrderName from tblCustomer;
+
 
 
 ----------------------------
@@ -1206,7 +2324,8 @@ Q1. What is CQRS?
 
 Answer :
 
-CQRS stands for Command Query Responsibility Segregation. It is a design pattern where read operations (queries) and write operations (commands) are separated into different models or handlers. Commands modify data but don't return data, 
+CQRS stands for Command Query Responsibility Segregation. It is a design pattern where read operations (queries) and write operations (commands) 
+are separated into different models or handlers. Commands modify data but don't return data, 
 while queries return data but don't modify it. This separation makes the application easier to maintain, test, and scale.
 
 Traditional CRUD
@@ -1349,7 +2468,7 @@ Transactions
 
 Can Query update data?
 
-No.
+No.;
 
 Query should never modify data.
 
@@ -1754,7 +2873,6 @@ The borrower repays the bank monthly over 15–30 years.
 Question 2> Why does the bank sell the mortgage?
 
 A mortgage is a long-term loan, often lasting 15–30 years.
-
 If a bank keeps every mortgage on its books:
 
 A large amount of its money remains tied up.
@@ -1894,9 +3012,10 @@ Exception - unhandled error occur which stop application for running handling ex
 
 User define custom exception  : 
 
-class InValidDenomenator: Exception
+
+class InValidDenomenator: Exception  // Exception is class inherited here
 {
-     public InValidDenomenator(string message): base(meesage)
+    public InValidDenomenator(string message): base(meesage)
 	{
 	}
 }
@@ -1934,46 +3053,288 @@ finally
 }
 
 
---------------------------------------------------------
-to increase api speed
-async and await code = perform asynchronous calling using async and await (context switching)
+
+1. What is an Exception?
+
+Answer:
+
+An exception is a runtime error that interrupts the normal flow of program execution. In .NET, all exceptions inherit from the Exception class.
+
+Example:
+
+throw new InvalidDenominatorException("Zero not allowed");
+Here, an exception is thrown because division by zero is not allowed.
 
 
-class program
+2. Why do we use Exception Handling?
+
+Answer:
+
+Exception handling prevents the application from crashing unexpectedly and allows us to handle errors gracefully.
+
+Example:
+
+try
 {
-	static void Main(string[] args)
-	{
-		Method(); // call
-		Console.WriteLine("Main Method");
-		Console.ReadLine();
-	}
-	
-	public static async void Method()
-	{
-		await Task.Run(new Action(LongTask)); // wait for response until main thread is running
-		Console.WriteLine("New Thread");
-	}
-	public static void LongTask()
-	{
-		Thread.sleep(20000);
-	}
+    int result = Divide(20, 0);
+}
+catch (Exception ex)
+{
+    Console.WriteLine(ex.Message);
+}
 
+3. What is a Custom Exception?
+
+Answer:
+
+A custom exception is a user-defined exception created by inheriting the Exception class. It is used to represent application-specific errors.
+
+Example:
+class InvalidDenominatorException : Exception
+{
+    public InvalidDenominatorException(string message)
+        : base(message)
+    {
+    }
 }
 
 
-What actually happens:
+4. Why inherit from the Exception class?
 
-Main thread calls Method()
-Main thread hits await → it pauses at that line and says "okay, you go run LongTask, tell me when done"
-A background thread is created and runs LongTask() independently (sleeping 20 seconds)
-Meanwhile, main thread is free — not frozen, not stuck
-When background thread finishes, it sends the response back
-Main thread wakes up and continues → prints "New Thread"
+Answer:
+
+By inheriting from Exception, our custom exception gets built-in features such as:
+
+Message
+StackTrace
+InnerException
+Source
+
+Example:
+
+throw new InvalidDenominatorException("Zero not allowed");
 
 
-The background thread is like a restaurant kitchen — you (main thread) place the order and sit free to do other things. Kitchen (background thread) cooks. 
-When food is ready, waiter calls you back. You didn't stand frozen at the counter the whole time.
-------------------------------------------------------------------
+5. What is the purpose of base(message)?
+
+Answer:
+
+base(message) passes the error message to the parent Exception class so that it can be accessed through ex.Message.
+
+public InvalidDenominatorException(string message)
+    : base(message)
+{
+}
+
+
+6. What is throw?
+
+Answer:
+
+throw is used to create and raise an exception.
+
+Example:
+if (b == 0)
+{
+    throw new InvalidDenominatorException("Zero not allowed");
+}
+
+
+8. Why do we use try?
+
+Answer:
+
+The try block contains code that may throw an exception.
+
+try
+{
+    int result = Divide(20, 0);
+}
+
+
+9. Why do we use catch?
+
+Answer:
+
+catch handles the exception thrown in the try block.
+catch (InvalidDenominatorException ex)
+{
+    Console.WriteLine(ex.Message);
+}
+
+
+11. What happens if there is no catch block?
+
+Answer:
+
+The exception propagates up the call stack. If nobody handles it, the application terminates.
+
+
+12. What is finally?
+
+Answer:
+
+The finally block always executes whether an exception occurs or not.
+
+Example:
+finally
+{
+    Console.WriteLine("Finally block executed");
+}
+
+It is commonly used for cleanup, such as closing files or releasing database connections.
+
+13. What is StackTrace?
+
+Answer:
+
+StackTrace shows where the exception occurred and the sequence of method calls that led to it.
+
+Example:
+Console.WriteLine(ex.StackTrace);
+
+
+14. Why use throw; instead of throw ex;?
+
+Correct:
+catch (Exception)
+{
+    throw;
+}
+Preserves the original stack trace.
+
+
+Wrong:
+
+catch (Exception ex)
+{
+    throw ex;
+}
+Resets the stack trace to the current catch block.
+
+
+| Message              | StackTrace                            |
+| -------------------- | ------------------------------------- |
+| Error description    | Location where the exception occurred |
+| `"Zero not allowed"` | `Program.Divide() → Program.Main()`   |
+
+
+
+19. Can we have multiple catch blocks?
+
+Yes.
+
+
+catch (InvalidDenominatorException ex)
+{
+}
+
+catch (DivideByZeroException ex)
+{
+}
+
+catch (Exception ex)
+{
+}
+
+Specific exceptions should always come before the general Exception.
+
+-----------------------------------------------------------------------------------
+programme :
+
+[1, 2, 3, 4, 5]
+
+1. Left Rotate by 1
+
+Output
+
+[2, 3, 4, 5, 1]
+
+Logic
+Save first element.
+Shift all remaining elements one position to the left.
+Put the saved element at the end.
+
+
+int[] arr = {1,2,3,4,5};
+
+// save first element
+
+int first = arr[0];
+
+// 
+for(int i=0;i<=arr.length;i++)
+{
+	arr[i] = arr[i+1]; 
+}
+
+arr[arr.length-1] = first;
+
+Console.WriteLine(string.join(",",arr));
+
+
+
+2. Right Rotate by 1
+
+Output
+
+[5, 1, 2, 3, 4]
+Logic
+Save last element.
+Shift everything one position to the right.
+Put the saved element at the beginning.
+
+int[] arr = { 1, 2, 3, 4, 5 };
+
+int last = arr[arr.Length - 1];
+
+for (int i = arr.Length - 1; i > 0; i--)
+{
+    arr[i] = arr[i - 1];
+}
+
+arr[0] = last;
+
+Console.WriteLine(string.Join(", ", arr));
+
+
+Rotate Left by K Positions
+
+Example
+
+Array = [1,2,3,4,5]
+
+K = 2
+
+Output
+
+3 4 5 1 2
+
+int[] arr = { 1, 2, 3, 4, 5 };
+int k = 2;
+
+for (int j = 0; j < k; j++)
+{
+    int first = arr[0];
+
+    for (int i = 0; i < arr.Length - 1; i++)
+    {
+        arr[i] = arr[i + 1];
+    }
+
+    arr[arr.Length - 1] = first;
+}
+
+Console.WriteLine(string.Join(", ", arr));
+
+
+Output
+
+3, 4, 5, 1, 2
+
+
+-------------------------------------------------------------------------------------------
+												Yield keyword in c#
 
 yield = perform statefull iteration instead of create temp array we use yield keyword to perform statefull iteration
 Example : in below example instead of write filter logic for that we need to create temp collection but we use yield keyword
@@ -2158,93 +3519,6 @@ public async Task<DashboardData> LoadDashboardParallel()
 } 
 Start all three, then WhenAll waits once. Time = longest task, not sum. On our Azure-hosted microservices, 
 this was the difference between a snappy dashboard and a timeout."
-
-----------------------------------------
-in Angular if we have dashboard component where we get all get api response use
-
-You have 5 dashboard APIs. Which approach will you use?
-Good answer:
-"Since Angular HttpClient returns Observables, I would use forkJoin(). It executes all HTTP requests in parallel and emits the combined result 
-after all requests complete successfully.If I were working with Promise-based APIs instead, I would use Promise.all()."
-
-
-// below we have example 
-
- getAllUsers() {
-    return this.http.get('https://jsonplaceholder.typicode.com/users');
-    //return this.http.get('https://jsonplaceholder.typicode.com/users').pipe(delay(3000)); // Added delay for demonstration
-  }
-
-  getAllComments() {
-    return this.http.get('https://jsonplaceholder.typicode.com/comments');
-  }
-
-  getAllPhotos() {
-    return this.http.get('https://jsonplaceholder.typicode.com/photos');
-  }
-
-  getAlbums() {
-    return this.http.get('https://jsonplaceholder.typicode.com/albums');
-  }
-
-loadDashboard() {
-
-  // Show spinner
-  this.spinner.showSpinner();
-  // we use forkjoin() here
-  forkJoin({
-    users: this.getAllUsers(),
-    comments: this.getAllComments(),
-    photos: this.getAllPhotos(),
-    albums: this.getAlbums()
-  }).subscribe({
-
-    next: (result: any) => {
-
-      this.users = result.users;
-      this.comments = result.comments;
-      this.photos = result.photos;
-      this.albums = result.albums;
-
-      this.userCount = this.users.length;
-      this.commentCount = this.comments.length;
-      this.photoCount = this.photos.length;
-      this.albumCount = this.albums.length;
-
-      this.loading.set(false);
-
-      // Success toast
-      this.toastService.showSuccess('Dashboard loaded successfully');
-
-      console.log('All APIs completed.');
-    },
-
-    error: (error) => {
-
-      console.error('Error loading dashboard:', error);
-
-      this.loading.set(false);
-
-      // Error toast
-      this.toastService.showError('Failed to load dashboard');
-    },
-
-    complete: () => {
-
-      console.log('Dashboard loading process completed.');
-
-      // Call another API if needed
-      // this.getEmployeeCount();
-      // this.loadRoles();
-    }
-
-  })
-  .add(() => {
-    // Always executes (success or error)
-    this.spinner.hideSpinner();
-  });
-
-}
 
 -------------------------------------------------------------------------------------------------------------------------------
 here we new few things 
@@ -2605,12 +3879,63 @@ FROM
 ) AS Emp
 WHERE SalaryRank = 2;
 
+
+Find Second Highest Salary using CTE + DENSE_RANK()
+
+WITH EmployeeSalaryRank AS
+(
+    SELECT
+        EmployeeId,
+        EmployeeName,
+        Salary,
+        DENSE_RANK() OVER (ORDER BY Salary DESC) AS SalaryRank
+    FROM Employee
+)
+SELECT *
+FROM EmployeeSalaryRank
+WHERE SalaryRank = 2;
+
+
+
 here it create new runtime column SalaryRank here..
 
 ROW_NUMBER() - Every row gets a unique number.
+
+Example
+
+| Salary | ROW_NUMBER |
+| -----: | ---------: |
+|   9000 |          1 |
+|   8000 |          2 |
+|   8000 |          3 |
+|   7000 |          4 |
+
+Even though two employees have the same salary, they get different numbers.
+
 RANK() - duplicate found then assign same rank and skipped current rank 
 
+
+| Salary | Rank |
+| -----: | ---: |
+|   9000 |    1 |
+|   8000 |    2 |
+|   8000 |    2 |
+|   7000 |    4 |
+
+
+Notice Rank 3 is skipped.
+
+
 DENSE_RANK() - no skipped rank or no gap
+
+
+| Salary | Dense Rank |
+| -----: | ---------: |
+|   9000 |          1 |
+|   8000 |          2 |
+|   8000 |          2 |
+|   7000 |          3 |
+
 
 
 | Requirement                                 | Function         |
@@ -2626,6 +3951,16 @@ DENSE_RANK() is more appropriate because employees with the same salary receive 
 
 
 ------------------------------------------------------------------
+											Delegate and Event in C#
+											
+What is a Delegate?
+
+A delegate is a type-safe function pointer in C#. It stores the reference (address) of one or more methods that have the same signature											
+Key Points
+
+Stores references to methods.
+Methods must have the same return type and parameters as the delegate.
+Supports multicast (calling multiple methods).									
 
 Delaegate 
 
@@ -2635,11 +3970,24 @@ delegate void paymentgateway(double amount);
 //assign event to present subscribe and unsubscribe
 public event paymentgateway;
 
+Step 2: Create Methods
+
+static void UpdateDatabase(double amount)
+{
+    Console.WriteLine($"Database updated : {amount}");
+}
+
+static void SendEmail(double amount)
+{
+    Console.WriteLine($"Email sent for payment : {amount}");
+}
+
+
 class Program
 {
-   // step 2 create object
+   // Step 3: Assign Methods to Delegate
 	paymentgateway paymentobj = updateDatabase;
-	// step 3 call another methodQuery
+	// step 4 call another methodQuery
 	 += SendEmail;       // call another method subscribe  + =
 	 
 	 // step 3
@@ -2681,7 +4029,9 @@ if i have three table customer, order , product
 now  i need to find customer who buys or order only 1 category of product
 
 SELECT
-    c.CustomerName
+	c.CustomerId,
+    c.CustomerName,
+	Count(p.Category)
 FROM Customer c
 INNER JOIN Orders o
     ON c.CustomerId = o.CustomerId
@@ -2706,7 +4056,7 @@ so I counted distinct categories using COUNT(DISTINCT p.Category). Finally, I fi
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ACID 
 Atomicity = all in one if bankA trnasfer money to bankB failed them amount substraction from BankA should be rollback against
-Conssitency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
+Consistency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
 Isolation = when transaction from bank A to bankB perform no one should stop ir not gonna impact from outside
 Durability = transaction done then save it
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2736,6 +4086,48 @@ Durability = transaction done then save it
  - if 10 thread run one core get 6 and other core get only 4 they are not equally divide thread to avoid this to use maximum utilization of core we use "Task"
  - in task we have paraller.for(); here equally divide thread to each core 
  - Task support thread pooling and async and await
+ 
+ ---------------------------------------------------------------------------------------------------------------------------------------
+ to increase api speed
+
+
+async and await code = perform asynchronous calling using async and await (context switching)
+
+
+class program
+{
+	static void Main(string[] args)
+	{
+		Method(); // call
+		Console.WriteLine("Main Method");
+		Console.ReadLine();
+	}
+	
+	public static async void Method()
+	{
+		await Task.Run(new Action(LongTask)); // wait for response until main thread is running
+		Console.WriteLine("New Thread");
+	}
+	public static void LongTask()
+	{
+		Thread.sleep(20000);
+	}
+
+}
+
+
+What actually happens:
+
+Main thread calls Method()
+Main thread hits await → it pauses at that line and says "okay, you go run LongTask, tell me when done"
+A background thread is created and runs LongTask() independently (sleeping 20 seconds)
+Meanwhile, main thread is free — not frozen, not stuck
+When background thread finishes, it sends the response back
+Main thread wakes up and continues → prints "New Thread"
+
+
+The background thread is like a restaurant kitchen — you (main thread) place the order and sit free to do other things. Kitchen (background thread) cooks. 
+When food is ready, waiter calls you back. You didn't stand frozen at the counter the whole time.
 
 --------------------------------------------------------------------------------------------------------------------------------------
 														Collections
@@ -2752,21 +4144,11 @@ Durability = transaction done then save it
  
  - below logic write compare function for compare data wheter it is int or string
  
- class program
- {
-	// assign datatype at runtime
-	check<int> checkedobj = new check();
-	checkedobj.check(100,100);
-	
-	check<string checkedobj = new check();
-	checkedobj.check("HII","HII");
- }
- 
- // create generic method 
+  // create generic method 
   
  class check<unknown>
 {
-	public void bool check(unknown a , unknown b)
+	public bool check(unknown a , unknown b)
 	{
 		if(a.Equals(b))
 		{
@@ -2778,34 +4160,29 @@ Durability = transaction done then save it
 		}
 	
 	}
-
-
 } 
-  
+ 
+ class program
+ {
+	// assign datatype at runtime as int
+	check<int> checkedobj = new check();
+	checkedobj.check(100,100);
+	
+	// assign datatype string at runtime
+	check<string checkedobj = new check();
+	checkedobj.check("HII","HII");
+ }
+ 
   -----------------------------------------------
   
  - IEnumerable  = only browse collections  internally use IEnumerator 
  - ICollection  = browse + count collections
  - IList = broswe + count +add + remove
-  
-  -----------------------------------------------------------------------------------------------------------------------------
-  ** difference IEnumerable vs IQuerable
-  
-  - IEnumerable = reads all from from sql server then apply filter at client side
-  - Example : 
-	IEnumerable<Employee> empListRead = dbContext.empList;
-	IEnumerable<Employee> a = dbcontext.empList.where(a=>a.empId==1).toList();
-	
-	
-	
-  - IQuerable = apply filter before read in sql server to the client side 
-    IQuerable<Employee> empListRead = dbcontext.empList;   // read and apply filter where empID=1 in sql query
-	IEnumerable<Employee> a = dbcontext.empList.where(a=>a.empId==1).toList();
-  
-  
+
   ------------------------------------------------------------------------------------------------------------------------
   
-  How to apply cors policy
+  How to apply cors policy in .NET
+   got to progrm.cs file
   
   builder.service.AddCors(options=>{
 		options.AddPolicy("AllowFrontEnd",policy=>{
@@ -2872,7 +4249,7 @@ Azure CI CD
 1> push your code in azure deops with create new organization after that while authenticate we need to create public token and need to paste as password 
   (go to user setting  -> personal access token with full access)
   
-2> code is push on azure deops
+2> code is push on azure devops
 
 3> create app service in azure portal 
 
@@ -2912,60 +4289,9 @@ delete cookies
 Response.Cookies.Delete(somekey);
 
 ---------------------------------------
-Programme :
-second highest value of an array ?
-Hint first find hishest and second highest value then check highest value is not equal to second highest
-
-int highest = int.minValue;
-int second = int.minValue;
-for(int i=0;i<n;i++)
-{
-	if(arr[i]>highest)
-	{
-		highest = arr[i];
-		second = highest;
-	}
-	if(arr[i]>second && highest != second)
-	{
-		second = arr[i];
-	}
-}
-return second;
-
-------------------------------------------------
-bubble sort
-
-int arr = { 23,45,12,67,43,12,10 };
-
-for(int i=o;i<arr.length-1;i++)
-{
-	for(int j=1;j<arr.length-1;j++)
-	{
-		if(arr[i]>arr[j])
-		{
-			int temp = arr[i];
-			arr[i] = arr[j];
-			arr[j] = temp;
-		}
-	}
-
-}
 
 -----------------------------------------------------
 
-Window function in sql server
-
-select row_number() over(order by customerName) as orderCustomerName from tblCustomer;
-// create new number
-select row_number() over (partion by customerName order by customerName) as orderCustomerName from tblCustomer;
-
-// assign some unique value to the customername value  
-// Ex : if rajesh come two time assign only only value to him
-
-select rank() over(order by customerName) as ordercustomerName from tblCustomer;
-
-// above rank() probelm id it create gap while assign unique value to avoid this dense_rank() is used
-select dense_rank() over(order by customerName) as OrderName from tblCustomer;
 
 --------------------------------------------------------------------------------------
 create trigger <triggername>
@@ -3059,11 +4385,11 @@ Hint use CTE
 with CTE -
 
 with employeeAge(
-select empName , datediff(yy,emp.DOB,getDate()) from tblEmployee
+select empName , datediff(yy,emp.DOB,getDate()) as AgeGreater60 from tblEmployee
 )
 select empName from employeeAge
 where empAge> 60
-order by Age desc
+order by AgeGreater60 desc
 offset 1
 next 1 rows only
 
@@ -3174,6 +4500,29 @@ and stores metadata in SQL Server. We used Event Grid-based blob triggers for ne
 processing instead of polling-based classic blob triggers."
 
 
+                    User
+                      │
+          Upload Resume.pdf
+                      │
+                      ▼
+              ASP.NET Core API
+                      │
+                      ▼
+             Azure Blob Storage
+                      │
+         New Blob Created Event
+                      │
+                      ▼
+             Azure Function Trigger
+                      │
+              Download File
+                      │
+                      ▼
+          Extract Metadata
+        (Name, Size, Type...)
+                      │
+                      ▼
+          SQL Server (Metadata)
 
 Interviewer: "How do you handle file downloads and metadata storage?"
 
@@ -3185,26 +4534,163 @@ it in SQL Server via Entity Framework. We use output bindings for SQL to keep th
 
 host.json file configures the Functions host runtime — logging, timeout, concurrency, etc.
 
+Real time code
+-------------------
+
+
+Step 1: Upload File from ASP.NET Core API
+
+[HttpPost("upload")]
+public async Task<IActionResult> Upload(IFormFile file)
+{
+    var blobServiceClient = new BlobServiceClient(_configuration["AzureStorage"]);
+
+    var container = blobServiceClient.GetBlobContainerClient("documents");
+
+    await container.CreateIfNotExistsAsync();
+
+    var blobClient = container.GetBlobClient(file.FileName);
+
+    using(var stream = file.OpenReadStream())
+    {
+        await blobClient.UploadAsync(stream, overwrite:true);
+    }
+
+    return Ok("File Uploaded Successfully.");
+}
+
+
+Step 2: Entity
+
+
+public class FileMetadata
+{
+    public int Id { get; set; }
+
+    public string FileName { get; set; }
+
+    public long FileSize { get; set; }
+
+    public string Extension { get; set; }
+
+    public string ContentType { get; set; }
+
+    public DateTime UploadedOn { get; set; }
+}
+
+3> dbcontext class
+
+private readonly AppDbContext _context;
+
+public BlobTriggerFunction(AppDbContext context)
+{
+    _context = context;
+}
+
+
+Step 4: Blob Trigger Azure Function
+
+public class BlobTriggerFunction
+{
+    private readonly AppDbContext _context;
+
+    public BlobTriggerFunction(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    [Function("BlobTriggerFunction")]
+    public async Task Run(
+        [BlobTrigger("documents/{name}")]
+        Stream blob,
+        string name)
+    {
+        var metadata = new FileMetadata
+        {
+            FileName = name,
+            FileSize = blob.Length,
+            Extension = Path.GetExtension(name),
+            UploadedOn = DateTime.UtcNow
+        };
+
+        _context.FileMetadatas.Add(metadata);
+
+        await _context.SaveChangesAsync();
+
+        Console.WriteLine("Metadata Saved Successfully.");
+    }
+}
+
+Whenever a new blob arrives,
+
+Azure automatically calls this function.
+
+No Controller.
+
+No API.
+
+No Scheduler.
+
+
+Step 3: Extract Metadata
+
+[Function("BlobTriggerFunction")]
+
+public async Task Run(
+
+[BlobTrigger("documents/{name}")]
+Stream blob,
+
+string name)
+{
+    Console.WriteLine($"File Name : {name}");
+
+    Console.WriteLine($"File Size : {blob.Length}");
+
+    Console.WriteLine($"Extension : {Path.GetExtension(name)}");
+}
+
+
+Output
+
+File Name : Resume.pdf
+
+File Size : 245678
+
+Extension : .pdf
+
+
+
+
+
+
 
 | Question                                                    | Your Answer                                                                                                                                                                                                                                                       |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "Difference between `local.settings.json` and `host.json`?" | `local.settings.json` = local dev environment variables (connection strings, secrets). 
 															  |	`host.json` = runtime behavior config (timeout, logging, extensions). 
-														 	  |	`local.settings.json` is **NOT deployed** to Azure — values go to App Settings in portal/Key Vault.  |
-| "How do you manage secrets?"                                | Use **Azure Key Vault** + **Managed Identity**. Never hardcode connection strings. In `local.settings.json`, reference Key Vault for local dev too.                                                                                                               |
-| "What is `AzureWebJobsStorage`?"                            | Required for blob triggers, queue triggers, timer triggers. Functions runtime uses it for internal state (blob receipts, lease management).                                                                                                                       |
+														 	  |	`local.settings.json` is **NOT deployed** to Azure — values go to App Settings in portal/Key Vault.  
+| "How do you manage secrets?"                                | Use **Azure Key Vault** + **Managed Identity**. Never hardcode connection strings. In `local.settings.json`, 
+																	reference Key Vault for local dev too.                                                                                                               |
+| "What is `AzureWebJobsStorage`?"                            | Required for blob triggers, queue triggers, timer triggers. Functions runtime uses it for internal state 
+																	(blob receipts, lease management).                                                                                                                       |
 
 
 
 
 | #  | Question                                           | Your Answer                                                                                                                                                               |
 | -- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1  | "What is `host.json`?"                             | Runtime configuration file — controls timeout, logging, extension settings, concurrency. Applied globally to all functions in the app.                                    |
-| 2  | "What is `local.settings.json`?"                   | Local development settings — connection strings, secrets. **Not deployed** to Azure. Values moved to App Settings/Key Vault in production.                                |
-| 3  | "How to override `host.json` without redeploying?" | Use app settings with `AzureFunctionsJobHost__` prefix, e.g., `AzureFunctionsJobHost__functionTimeout`. Double-underscore creates hierarchy.                              |
+| 1  | "What is `host.json`?"                             | Runtime configuration file — controls timeout, logging, extension settings, concurrency.
+															Applied globally to all functions in the app.                                    
+| 2  | "What is `local.settings.json`?"                   | Local development settings — connection strings, secrets. **Not deployed** to Azure.
+															Values moved to App Settings/Key Vault in production.                                |
+| 3  | "How to override `host.json` without redeploying?" | Use app settings with `AzureFunctionsJobHost__` prefix, e.g., `AzureFunctionsJobHost__functionTimeout`.
+																Double-underscore creates hierarchy.                              |
 | 4  | "Difference between Consumption and Premium?"      | Consumption = scale-to-zero, pay-per-use, cold starts, 10-min timeout. Premium = always-ready instances, no cold starts, VNet, 30-min+ timeout, ~\$146/month fixed cost.  |
-| 5  | "How does scaling work?"                           | Scale controller monitors event rates. Formula: `desired instances = event source length / target executions per instance`. Adds up to 4 instances at a time.             |
-| 6  | "What is cold start?"                              | Time to provision new instance + start runtime + load dependencies. Consumption: 2-7s. Premium: near-zero with always-ready.                                              |
+| 5  | "How does scaling work?"                           | Scale controller monitors event rates.
+															Formula: `desired instances = event source length / target executions per instance`. Adds up to 4 instances at a time.             |
+| 6  | "What is cold start?"                              | Time to provision new instance + start runtime + load dependencies. C
+															onsumption: 2-7s. Premium: near-zero with always-ready.                                              |
 | 7  | "How to reduce cold starts?"                       | Use Premium/Flex with always-ready instances, ReadyToRun compilation, trim DI registrations, use warmup trigger, keep functions lightweight.                              |
 | 8  | "What is `AzureWebJobsStorage`?"                   | Required for blob/queue/timer triggers. Used by runtime for internal state — blob receipts, lease management, timer locks.                                                |
 | 9  | "Blob trigger vs Event Grid trigger?"              | Blob trigger = polling, minutes latency, can miss events. Event Grid = push, seconds latency, more reliable, better for production.                                       |
@@ -3460,7 +4946,8 @@ Projects
 
 Msuite
 Dot Net Full Stack Developer
-Collaborated with Business Analysts to gather and analyze project requirements, translating them into technical tasks and subtasks on Jira with flowcharts, algorithms, and design references
+Collaborated with Business Analysts to gather and analyze project requirements, translating them into technical tasks and subtasks on Jira with flowcharts,
+ algorithms, and design references
 Participated in sprint planning with Technical Manager and Product Owner; broke down features into estimated, trackable stories
 Developed responsive UI modules by converting Figma designs into production-ready components using Angular, HTML, CSS, PrimeNG, and NgRx for state management
 Built and integrated RESTful APIs using ASP.NET Core (.NET 8) and C#, connecting frontend components to backend services with proper error handling
@@ -3539,85 +5026,6 @@ available in the inventory and return a Boolean.
 Circular dependency problem (n+1) problem
 solution  = use includes<> 
 -----------------------------------------------------
-anagram , group anagram , prime ,
--------------------------
-
-Ex : "listen"	"silent"  : true
-
-"aabc"	"abbc"	:false
-
-
-listen  -> silent  ✅
-
-aabc    -> abbc    ❌
-
-triangle -> integral ✅
-
-Two strings are anagrams if:
-
-Same length
-Same characters
-Same frequency of each character
-
-
-bool CheckAnagram(string s, string t)
-{
-    // Step 1: Length check
-    if (s.Length != t.Length)
-    {
-        return false;
-    }
-
-    // Step 2: ASCII frequency array
-    int[] ch = new int[256];
-
-    for (int i = 0; i < s.Length; i++)
-    {
-        ch[s[i]]++;   // Increase frequency of s string array
-        ch[t[i]]--;   // Decrease frequency of t string array
-    } 
-
-    // Step 3: Check frequencies
-    for (int i = 0; i < ch.Length; i++)
-    {
-        if (ch[i] != 0)
-            return false;
-    }
-
-    return true;
-}
-
------------------------------
-check paranthesis [({})] this is input
-
-public bool IsValid(string s) {
-    // 1. Create our "Stack" of plates
-    Stack<char> myStack = new Stack<char>();
-
-    // 2. Look at every character in the string one by one
-    foreach (char c in s) {
-        // If it's an opening, push it to the stack
-        if (c == '(' || c == '[' || c == '{') {
-            myStack.Push(c);
-        }
-        // If it's a closing, we need to check the top
-        else {
-            // If we have a closing bracket but the stack is empty, it's wrong!
-            if (myStack.Count == 0) return false;
-
-            char top = myStack.Pop(); // Take the top plate off
-
-            // Check if the pair is wrong
-            if (c == ')' && top != '(') return false;
-            if (c == ']' && top != '[') return false;
-            if (c == '}' && top != '{') return false;
-        }
-    }
-
-    // 3. If the stack is empty, return true. If stuff is left over, return false.
-    return myStack.Count == 0;
-}
-
 
 --------------------------------------------------------------------------------------
 
@@ -3744,7 +5152,7 @@ Because the component appears only after data loads i.e we used *ngIf.
 
 "static: true resolves the ViewChild or ContentChild before ngOnInit(), so it can be accessed in ngOnInit(). static: false resolves it after the view is initialized, 
 so it should be accessed in ngAfterViewInit(). When an element is inside *ngIf or rendered dynamically, I use static: false."
-so it should be accessed in ngAfterViewInit(). When an element is inside *ngIf or rendered dynamically, I use static: false."
+
 -----------------------
 Routing -
 
@@ -3818,8 +5226,198 @@ use virtual in dbcontext class (Lazy loading)
 EntityState types
 Thread pooling Exhustion
 
+------------
+What is API Versioning?
+
+API versioning allows you to maintain multiple versions of the same API so existing clients continue to work while newer clients can use updated functionality.
+
+Example:
+
+/api/v1/employees
+
+/api/v2/employees
+
+Suppose your old API returns:
+{
+  "id": 1,
+  "name": "Umar"
+}
+
+Now business wants to add Email.
+
+Version 2
+
+{
+  "id": 1,
+  "name": "Umar",
+  "email": "umar@test.com"
+}
+Instead of breaking existing clients, create a new version.
+
+How to implement?
+Install Package
+
+dotnet add package Asp.Versioning.Mvc
 
 
+Program.cs
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+
+    options.AssumeDefaultVersionWhenUnspecified = true;
+
+    options.ReportApiVersions = true;
+});
+
+
+Controller
+
+
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/employees")]
+public class EmployeesController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get()
+    {
+        return Ok("Employee API V1");
+    }
+}
+
+
+Version 2
+
+[ApiVersion("2.0")]
+[Route("api/v{version:apiVersion}/employees")]
+public class EmployeesV2Controller : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get()
+    {
+        return Ok("Employee API V2");
+    }
+}
+
+
+
+2. Why use virtual in DbContext Entity Classes? (Lazy Loading)
+
+Suppose
+
+
+public class Department
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; }
+
+    public virtual ICollection<Employee> Employees { get; set; }   // here add virtual
+}
+
+
+What does virtual do?
+
+It allows EF Core to create a proxy class that can automatically load related entities when they are first accessed.
+
+Example
+
+var department = context.Departments.First();
+
+Only Department is loaded.
+
+Later
+
+department.Employees
+
+EF Core automatically executes another SQL query to fetch Employees.
+
+You didn't explicitly call .Include().
+
+This is called Lazy Loading.
+
+Advantages
+Loads related data only when needed.
+Reduces initial query size.
+
+
+disadvantages :
+this N+1 Query
+
+var departments = context.Departments.ToList();
+
+foreach(var d in departments)
+{
+    Console.WriteLine(d.Employees.Count);
+}
+
+The virtual keyword enables lazy loading by allowing EF Core to create proxy objects. When a navigation property is accessed, EF Core loads the related data automatically. 
+However, lazy loading can cause the N+1 query problem, 
+so many teams prefer eager loading with Include() for better performance and more predictable SQL.
+
+Because of this, many projects disable lazy loading and prefer explicit loading or eager loading with Include().
+
+
+
+---------------------------
+
+4. Thread Pool Exhaustion
+
+This is more of a .NET runtime concept than an EF Core concept.
+
+.NET maintains a pool of reusable worker threads.
+
+Instead of creating a new thread for every request, it reuses existing threads.
+
+
+What is Thread Pool Exhaustion?
+
+It occurs when all available threads are busy and new requests must wait.
+
+100 Threads
+
+↓
+
+100 Busy
+
+↓
+
+101st Request Waiting
+
+Users experience slow responses or timeouts.
+
+1. Blocking Calls
+Thread.Sleep(5000);
+
+or
+
+Task.Result
+
+or
+
+Task.Wait();
+
+These block threads unnecessarily.
+
+
+How to Prevent It
+Prefer async/await.
+Use asynchronous EF Core methods (ToListAsync, SaveChangesAsync, etc.).
+Avoid Task.Result, .Wait(), and Thread.Sleep().
+Move long-running work to background services (e.g., BackgroundService, Hangfire, Azure Functions).
+Keep request processing fast.
+
+
+| Thread Pool Exhaustion                                                              | SocketException                                                                |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| No worker threads are available to process requests.                                | A network/socket communication error occurs.                                   |
+| Resource management problem.                                                        | Network connectivity problem.                                                  |
+| Caused by blocking threads (`Thread.Sleep`, `.Result`, `.Wait()`, synchronous I/O). | Caused by connection refused, DNS failure, timeout, network interruption, etc. |
+| Happens inside the .NET runtime.                                                    | Happens during TCP/IP communication.                                           |
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
 Dynamic component in Angular => instead of register component in imports[] we can still called component using dynamic component.
 
 if i have 100000 records how i get this in web api if i want to called
@@ -3849,7 +5447,7 @@ solution 1:  var query = _context.Employees
 			
 solution 2: Eager Loading with ThenInclude
 
-var employees = await _context.Employees.Include(e=>e.Department
+var employees = await _context.Employees.Include(e=>e.Department)
 											.ThenInclude(d=>d.Manager));     // Load DepartMEnt Manager
 										.Include(e=>e.Projects)
 											.ThenInclude(p=>p.Client)		// Load Project Client
@@ -3958,6 +5556,53 @@ Example :
 - When you you run update database , Ef will insert this data if it doesnt exist.
 
 
+Approach 2 - Create an Interface
+
+public interface ISeedData
+{
+    Task SeedAsync();
+}
+
+Implementation
+
+public class SeedData : ISeedData
+{
+    private readonly AppDbContext _context;
+
+    public SeedData(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task SeedAsync()
+    {
+        if (!_context.Employees.Any())
+        {
+            _context.Employees.Add(new Employee
+            {
+                Name = "Umar",
+                Salary = 50000
+            });
+
+            await _context.SaveChangesAsync();
+        }
+    }
+}
+
+Register
+
+builder.Services.AddScoped<ISeedData, SeedData>();
+
+Then call it
+
+using(var scope = app.Services.CreateScope())
+{
+    var seed = scope.ServiceProvider.GetRequiredService<ISeedData>();
+
+    await seed.SeedAsync();
+}
+
+
 
 How to write raw sql queries or stored procedure calls in Efcore ?
 
@@ -4004,6 +5649,23 @@ Performance-critical queries that are difficult to express efficiently with LINQ
 For normal CRUD operations, LINQ is generally preferred because it is strongly typed, easier to maintain, and database-agnostic.
 
 -----------------------------------------------------------------------------------------------
+--------------------------
+
+EF Core tracks entities using five states: Added, Modified, Deleted, Unchanged, and Detached. 
+During SaveChanges(), EF Core generates the appropriate SQL statements based on each entity's state.
+
+Ex :Unchanged
+var emp = await context.Employees.FindAsync(1);
+
+5. Detached
+context.Entry(emp).State = EntityState.Detached;
+
+EF Core stops tracking it.
+
+Changes will not be saved.
+
+How to check state?
+Console.WriteLine(context.Entry(employee).State);
 
 EntityState in EntityFramework Core
 - before SaveChanges() Entity follows through different state 
@@ -4038,6 +5700,23 @@ Example :
 	var employee = _context.Employee.AsNoTracking().ToListAsync();
 	
 	-------------------------------------
+	
+IMP IMP *********
+
+  ** difference IEnumerable vs IQuerable
+  
+  - IEnumerable = reads all from from sql server then apply filter at client side
+  - Example : 
+	IEnumerable<Employee> empListRead = dbContext.empList;
+	IEnumerable<Employee> a = dbcontext.empList.where(a=>a.empId==1).toList();
+	
+	
+	
+  - IQuerable = apply filter before read in sql server to the client side 
+    IQuerable<Employee> empListRead = dbcontext.empList;   // read and apply filter where empID=1 in sql query
+	IEnumerable<Employee> a = dbcontext.empList.where(a=>a.empId==1).toList();
+  
+  
 	
 Question : Immediate Execution vs Deferred Execution in Entity Framework Core ?
 
@@ -4186,13 +5865,19 @@ Interview Comparison
 IEnumerable (Immediate Execution)
 ---------------------------------
 
-IEnumerable<Employee> empList = dbContext.Employees
-                                         .Where(e => e.Salary > 60000)
-                                         .ToList(); // here ToList() called so data loaded in memory
+IEnumerable<Employee> employees = dbContext.Employees.ToList();
+
+var result = employees.Where(x => x.Salary > 50000);
 										 
 
 IQueryable (Deferred Execution)
 --------------------------------
+
+IQueryable<Employee> employees = dbContext.Employees;
+
+var result = employees.Where(x => x.Salary > 50000);
+
+var list = result.ToList();
 
 IQueryable<Employee> empList = dbContext.Employees
                                         .Where(e => e.Salary > 60000);  // ToList() not called here so query not executed in sql server yet
@@ -4200,12 +5885,14 @@ IQueryable<Employee> empList = dbContext.Employees
 var result = empList.ToList(); // query executed here
 
 
-Rule to remember for interviews:
+Rule to remember:
 
-IEnumerable → Data has already been fetched (typically by ToList()), so further LINQ operations happen in memory.
-IQueryable → Build the query first, call ToList() at the end.
+IEnumerable = ToList() first → filter later (in memory).
+IQueryable = build the query first → ToList() last (in SQL Server).
 
-
+IEnumerable performs filtering in application memory. If I call ToList() first and then apply Where(), EF Core fetches all records from the database, and filtering happens in C#.
+IQueryable builds an expression tree and translates it into SQL. The filtering is executed by the database, so only the required records are returned.
+ For EF Core and large datasets, IQueryable is generally the preferred choice because it reduces memory usage and improves performance.
 
 
 IQueryable uses deferred execution and builds an SQL query that runs on the database only when the results are materialized (for example, with ToList()). 
@@ -4224,6 +5911,7 @@ IQueryable<Employee> list = dbContext.Employees.ToList().AsQueryable();
 
 In the second example, the data is already in memory before AsQueryable() is called. 
 AsQueryable() does not send the query back to SQL Server; it simply wraps the in-memory collection as IQueryable.
+
 
 
 
@@ -4391,6 +6079,12 @@ use Imemorycache or redis
 				
 				
 				
+in Angular
+
+use trackby for for loop 
+				
+				
+				
 summary 
 
 | Technique              | Purpose                            |
@@ -4454,8 +6148,9 @@ TrustServerCertificate=True;
 ------------------------------------
 imp > How to debug Ef Core linq or how do you profile and debug EF - generated SQL ?
 
+1>first we can direactly apply debugger and check it or 
 
-1. Use ToQueryString()
+2> Use ToQueryString()
 
 EF Core provides ToQueryString().
 
@@ -4569,7 +6264,7 @@ Interview Tip ⭐
 
 If you're asked "How do you optimize an EF Core query?", a strong answer is:
 
-Use ToQueryString() to inspect the SQL.
+Use "ToQueryString()" to inspect the SQL.
 Review the execution plan in SSMS.
 Check indexes.
 Reduce unnecessary Include() calls.
@@ -4607,9 +6302,11 @@ public class Employee
 }
 
 Create migration in package manager console of tool section of visual studio 
-Add-Migration AddEmployeeDetails
 
-update-database 
+
+- Add-Migration AddEmployeeDetails
+
+- update-database 
 
 
 developement env changes are save in database now 
@@ -5247,7 +6944,6 @@ whereas an impure pipe runs on every change detection cycle. However, for large 
  filtering in the component (using RxJS or signals) is generally preferred over an impure pipe for better performance.
  
  
- 
  Should you use an impure search pipe?
 
 In production, usually no.
@@ -5322,6 +7018,110 @@ azure functions ,azure logic apps ,
 
 --------------------------------------------------------------------------------------------------------------------------------
 															Angular	RXJS (Reactive Extension of Javascript)
+															
+Question > what is callback hell how to avoid in angular?
+
+What is Callback Hell?
+
+Callback Hell happens when asynchronous operations are nested inside one another, making the code difficult to read, maintain, and debug.
+
+It looks like a "pyramid of doom."
+
+Example:
+
+login().subscribe(user => {
+
+    getEmployee(user.id).subscribe(emp => {
+
+        getDepartment(emp.departmentId).subscribe(dept => {
+
+            getSalary(emp.id).subscribe(salary => {
+
+            });
+
+        });
+
+    });
+
+});
+
+Notice the nesting:
+
+subscribe()
+    |
+    |-- subscribe()
+            |
+            |-- subscribe()
+                    |
+                    |-- subscribe()
+					
+Problems:
+
+❌ Hard to read
+❌ Difficult error handling
+❌ Difficult testing
+❌ Difficult maintenance
+
+
+How do we avoid Callback Hell?
+
+Angular uses RxJS operators.
+
+The most common ones are:
+
+switchMap() ⭐⭐⭐⭐⭐
+mergeMap()
+concatMap()
+exhaustMap()
+forkJoin() (parallel calls)
+
+
+Solution using switchMap()
+
+Instead of nesting:
+
+this.http.get('/api/user').pipe(
+
+  switchMap((user: any) =>
+    this.http.get(`/api/orders/${user.id}`)
+  ),
+
+  switchMap((orders: any) =>
+    this.http.get(`/api/payment/${orders[0].id}`)
+  )
+
+).subscribe({
+
+  next: data => console.log(data),
+
+  error: err => console.log(err)
+
+});
+
+or use forkjoin 
+
+forkJoin({
+
+    employees: this.getEmployees(),
+
+    attendance: this.getAttendance(),
+
+    leave: this.getLeave(),
+
+    wfh: this.getWFH()
+
+}).subscribe(result => {
+
+    console.log(result);
+
+});
+
+How do you avoid it in Angular?
+
+I avoid Callback Hell by using RxJS operators such as switchMap, mergeMap, concatMap, exhaustMap, and forkJoin. If one API depends on another, I use switchMap.
+ If multiple APIs are independent, such as loading dashboard data, I use forkJoin to execute them in parallel.
+ This results in cleaner code with a single subscribe() and centralized error handling.
+
 																
 - Handle asynchronous data in angular.
 
@@ -5587,6 +7387,95 @@ export class MyComponent {
 }
 
 
+in Angular if we have dashboard component where we get all get api response use
+
+You have 5 dashboard APIs. Which approach will you use?
+Good answer:
+"Since Angular HttpClient returns Observables, I would use forkJoin(). It executes all HTTP requests in parallel and emits the combined result 
+after all requests complete successfully.If I were working with Promise-based APIs instead, I would use Promise.all()."
+
+
+// below we have example 
+
+ getAllUsers() {
+    return this.http.get('https://jsonplaceholder.typicode.com/users');
+    //return this.http.get('https://jsonplaceholder.typicode.com/users').pipe(delay(3000)); // Added delay for demonstration
+  }
+
+  getAllComments() {
+    return this.http.get('https://jsonplaceholder.typicode.com/comments');
+  }
+
+  getAllPhotos() {
+    return this.http.get('https://jsonplaceholder.typicode.com/photos');
+  }
+
+  getAlbums() {
+    return this.http.get('https://jsonplaceholder.typicode.com/albums');
+  }
+
+loadDashboard() {
+
+  // Show spinner
+  this.spinner.showSpinner();
+  // we use forkjoin() here
+  forkJoin({
+    users: this.getAllUsers(),
+    comments: this.getAllComments(),
+    photos: this.getAllPhotos(),
+    albums: this.getAlbums()
+  }).subscribe({
+
+    next: (result: any) => {
+
+      this.users = result.users;
+      this.comments = result.comments;
+      this.photos = result.photos;
+      this.albums = result.albums;
+
+      this.userCount = this.users.length;
+      this.commentCount = this.comments.length;
+      this.photoCount = this.photos.length;
+      this.albumCount = this.albums.length;
+
+      this.loading.set(false); // loader stop here bydefault it is true
+
+      // Success toast
+      this.toastService.showSuccess('Dashboard loaded successfully');
+
+      console.log('All APIs completed.');
+    },
+
+    error: (error) => {
+
+      console.error('Error loading dashboard:', error);
+
+      this.loading.set(false);
+
+      // Error toast
+      this.toastService.showError('Failed to load dashboard');
+    },
+
+    complete: () => {
+
+      console.log('Dashboard loading process completed.');
+
+      // Call another API if needed
+      // this.getEmployeeCount();
+      // this.loadRoles();
+    }
+
+  })
+  .add(() => {
+    // Always executes (success or error)
+    this.spinner.hideSpinner();
+  });
+
+}
+
+
+
+
 | Feature              | Description                            |
 | -------------------- | -------------------------------------- |
 | **Waits for ALL**    | Waits until every Observable completes |
@@ -5667,7 +7556,6 @@ constrctor()
 		})
 	})
 }
-
 
 
 | Operator     | Use Case                 | Behavior                          |
@@ -6309,6 +8197,35 @@ Virtual scrolling renders only the visible items on screen instead of rendering 
 
 Virtual scrolling improves performance by reducing the number of rendered DOM elements and dynamically reusing elements based on viewport visibility.
 
+With Virtual Scroll
+
+Now use Angular CDK Virtual Scroll.
+
+<cdk-virtual-scroll-viewport itemSize="50" class="viewport">
+
+    <div *cdkVirtualFor="let emp of employees">
+        {{ emp.name }}
+    </div>
+
+</cdk-virtual-scroll-viewport>
+
+Suppose your screen can show only 12 employees.
+
+Angular creates only
+
+
+When should you use it?
+
+Use Virtual Scroll when you have:
+
+Thousands of rows in a table
+Long lists
+Chat messages
+Product catalogs
+Logs
+Activity feeds
+Employee directories
+
 
 Note: we can use @deffered here
 @defer (on viewport) {
@@ -6360,8 +8277,142 @@ Detect async operations and trigger change detection.
 To improve reactivity and performance.
 
 
+Question > How to handle million of records in programming Angulat and .net core ?
 
-----------------------------------
+In angular
+
+ng add @angular/material
+
+step 2>
+
+Create a file user.model.ts in the src/app directory:
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+step 3> Generate a service:
+
+
+user.service.ts
+
+
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { User } from './user.model';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class UserService 
+{
+  private apiUrl = 'https://api.example.com/users'; // Replace with your API endpoint
+  constructor(private http: HttpClient) {}
+  getUsers(pageIndex: number, pageSize: number): Observable<{ users: User[]; total: number }> {
+    const params = new HttpParams()
+      .set('page', pageIndex.toString())
+      .set('limit', pageSize.toString());
+    return this.http.get<{ users: User[]; total: number }>(this.apiUrl, { params });
+  }
+}
+
+Explanation: This service fetches paginated user data from the API. Adjust the apiUrl to match your backend endpoint.
+
+step 4> Generate the Component
+ng generate component user-list
+
+
+user-list.component.html
+--------------------------
+
+
+<div class="user-list-container">
+  <table mat-table [dataSource]="users" class="mat-elevation-z8">
+    <!-- ID Column -->
+    <ng-container matColumnDef="id">
+      <th mat-header-cell *matHeaderCellDef> ID </th>
+      <td mat-cell *matCellDef="let user"> {{ user.id }} </td>
+    </ng-container>
+
+    <!-- Name Column -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef> Name </th>
+      <td mat-cell *matCellDef="let user"> {{ user.name }} </td>
+    </ng-container>
+    <!-- Email Column -->
+    <ng-container matColumnDef="email">
+      <th mat-header-cell *matHeaderCellDef> Email </th>
+      <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
+    </ng-container>
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+  <mat-paginator
+    [length]="totalUsers"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[5, 10, 20]"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+</div>
+
+- This template displays user data in a Material table and includes a paginator at the bottom.
+
+
+user-list.component.ts
+--------------------------
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { UserService } from '../user.service';
+import { User } from '../user.model';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
+
+@Component({
+  selector: 'app-user-list',
+  templateUrl: './user-list.component.html',
+  styleUrls: ['./user-list.component.scss'],
+})
+export class UserListComponent implements OnInit {
+  users: User[] = [];
+  displayedColumns: string[] = ['id', 'name', 'email'];
+  totalUsers = 0;
+  pageSize = 10;
+  pageIndex = 1;
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  constructor(private userService: UserService) {}
+  ngOnInit(): void {
+    this.loadUsers();
+  }
+  loadUsers(): void {
+    this.userService.getUsers(this.pageIndex, this.pageSize).subscribe({
+      next: (data) => {
+        this.users = data.users;
+        this.totalUsers = data.total;
+      },
+      error: (err) => {
+        console.error('Error fetching users:', err);
+      },
+    });
+  }
+  onPageChange(event: PageEvent): void {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadUsers();
+  }
+}
+
+step 5> app.module.ts
+
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    MatTableModule,
+    MatPaginatorModule,
+    HttpClientModule,
+  ],
+
+----------------------------------------------------------------------------------
 
 in angular difference between any vs unknown datatype
 
@@ -6646,25 +8697,58 @@ Validator = Validation
 
 In enterprise applications we often use both together.
 
-import { Directive, HostListener } from '@angular/core';
+--------------------------------------
+custom directives
+
+import { Directive, HostListener } from "@angular/core";
+
 
 @Directive({
-  selector: '[appNumberOnly]'
+    selector: '[appNumberOnly]'
 })
-export class NumberOnly {
 
-  @HostListener('keydown', ['$event'])
-  onKeyDown(event: KeyboardEvent) {
-    const allowedKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
+export class NumberOnlyDirectives {
 
-    if ((event.key >= '0' && event.key <= '9') || allowedKeys.includes(event.key)) {
-      return;
+    @HostListener('keydown', ['$event'])
+    onkeydown(event: KeyboardEvent) {
+        const allowedkeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
+
+        if (!allowedkeys.includes(event.key)) {
+            event.preventDefault();
+        }
     }
-
-    event.preventDefault();
-  }
-
 }
+------------------------------------------------------
+custom pipes
+
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({
+  name: 'customCurrency',
+  standalone: true
+})
+export class CustomCurrencyPipe implements PipeTransform {
+
+  transform(value: number): string {
+    return '$' + value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+}
+
+then register this in component imports:[CustomCurrencyPipe]
+
+use in html
+{{123456.789 | currencyShort}}
+
+
+
+then register this in component imports:[NumberOnlyDirectives]
+
+
+use in html
+<input type="text" placeholder="Enter your name" appNumberOnly /> // use it here
 
 Interview Question: How did you implement it?
 Answer
@@ -6752,6 +8836,16 @@ firstname middlename  sirname
 after adding this filed 
 full name is filled automatically .
 
+
+is donr in angular forms 
+
+import { merge } from 'rxjs';
+
+merge(
+  this.employeeForm.get('firstName')!.valueChanges,
+  this.employeeForm.get('middleName')!.valueChanges,
+  this.employeeForm.get('lastName')!.valueChanges
+).subscribe(() => this.updateFullName());
 -------------------------------------------------------------------------------------------------------------------------------------------------
 Why Generic Repository?
 
@@ -6768,6 +8862,20 @@ A strong answer is:
 I may use a Generic Repository combined with specialized repositories for complex queries."
 
 --------------------------------------------------------------------------------------------------------------------------------------------------
+What is SignalR?
+
+SignalR is Microsoft's real-time communication library that enables bidirectional communication between the server and connected clients. 
+It primarily uses WebSockets and automatically falls back to Server-Sent Events or Long Polling when necessary.
+
+Where would you use SignalR?
+Live dashboards
+Chat applications
+Notifications
+Live auction systems
+Stock price updates
+Employee attendance dashboards
+Live order tracking
+Multiplayer games
 
 
 															CRUD operation perform step by step
@@ -6815,6 +8923,10 @@ I may use a Generic Repository combined with specialized repositories for comple
 		options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 	});
 	
+Note : install Nuget package entityframeworkCore.Sql server
+then run 
+Add-Migration
+update-database 
 	
 
 5> create controller class
@@ -7348,6 +9460,22 @@ DELETE FROM Employee	  TRUNCATE TABLE 		DROP TABLE Employee;
 WHERE Id = 101;			   Employee;			
 					
 					
+					
+| Feature                       | DELETE                    | TRUNCATE           | DROP                                      |
+| ----------------------------- | ------------------------- | ------------------ | ----------------------------------------- |
+| Removes                       | Selected rows or all rows | All rows           | Entire table (structure + data)           |
+| `WHERE` Clause                | ✅ Yes                     | ❌ No               | ❌ No                                      |
+| Rollback (inside transaction) | ✅ Yes                     | ✅ Yes (SQL Server) | ✅ Yes (SQL Server, if inside transaction) |
+| Identity Reset                | ❌ No                      | ✅ Yes              | N/A (table deleted)                       |
+| Table Structure               | ✅ Remains                 | ✅ Remains          | ❌ Deleted                                 |
+| Indexes                       | Remain                    | Remain             | Deleted                                   |
+| Constraints                   | Remain                    | Remain             | Deleted                                   |
+| Trigger Fires                 | ✅ Yes                     | ❌ No               | ❌ No                                      |
+| Logging                       | Fully logged (row by row) | Minimally logged   | Metadata operation                        |
+| Performance                   | Slowest                   | Faster             | Fastest                                   |
+
+					
+					
 			
  --------------- *** cheat sheet **** ------------
 			
@@ -7651,7 +9779,7 @@ Example -:
 		{
 			public int getTotalCost(int intPerProductCost , int intQty, int intDiscount)
 			{
-					return (intPerProductCost*intQty)-intDiscount;
+				return (intPerProductCost*intQty)-intDiscount;
 			}
 		}
 
@@ -7745,6 +9873,7 @@ Question 6: Define Interface ?
 Answer :	
 	- What is interface :
 		- interface is contract 
+		
 		1: An interface looks like a class , but has no implementation  i.e only abstract method present.
 			it only contains definations of events , indexer , method/properties
 			the reason interfaces only provide definations beacause they are inherited by class 
@@ -8940,9 +11069,1066 @@ etc. Extension methods move related configuration into dedicated classes, making
 
 
 -----------------------------------------------------------------------------------------------------------------------
+								Angular Notes
+			-------------------------------------------------------------
 
-										
-												
+Angular project is standalone means we can create component without module now 		
+																
+---Questpond---
+
+Lab requirement
+
+- NodeJs : Run Javasript outside browser or compiling our code
+- Visual Studio Code, VIM, Webstorm - IDE
+- Web API 
+
+
+--- Day 1 ---
+
+Javascript is a dynamic scripting language
+
+var d = 10;
+d = 'pradeep';  // assign string datatype 
+d = true;       // assign boolean datatype 
+
+-----------------------------------------------
+
+function add(x,y)
+{
+	return x + y;
+}
+
+add(10,10);//20
+add(10); //NaN    -- here we pass only one parameter
+add();            -- here we can not pass any parameter
+
+---------------------------
+
+var h;
+console.log(h); //undefined
+//
+//
+=10;
+
+Hoisting- Scan your code & move the declaration on the top
+
+---------------------------------------------
+var x = 10;
+var y = 'pradeep';
+var z  = y - x + 10 ; pradeep1010
+
+-------------------------------------------
+
+Typescript
+
+- Its a programming language developed by Microsoft
+- Superset of Javascript
+- Datatype, OOPS
+- Compiled to JS according to ES(Ecmascript) std
+
+HTML - W3C
+JS - Ecmascript
+
+Ecmascript
+- rules and guidelines for a scripting language
+
+IE11- ES5
+Chrome,Edge,Mozilla - ES6+  let,class
+
+NodeJs
+- Cross platform
+- Javascript runtime enivronment
+- Free & open source
+- Create servers using nodejs
+- Tools called as NPM (Node Package Manager)
+
+Node Package Manager
+- command that allows you to download the packages from repository 
+- It resolved inter-dependencies 
+
+Install Typescript
+> npm install typescript
+> tsc <filename>.ts
+> node <filename>js
+
+
+---Day 2---
+for-of  --similar to foreach  loop
+for-in  -- similar to for loop
+
+
+Module
+- using "export" for exposing the class/interface/function/const
+- using "import" for consuming
+
+Angular 
+- Databinding framework
+- Component based architecture
+- Used for creating SPA (Single Page Application)
+- Write Declarative statement rather than imperative statements
+
+Adding typescript configuration file in typescript
+> tsc -init
+
+Next Session
+- Angular project creation & undertstanding structure
+- Databinding
+- Directives
+- Pipes
+
+---Day 3---
+
+Angular CLI (Command line interface)
+- Create, Build, compile, serve the angular app
+- Create any files components, directive, pipes, service, class
+>npm install @angular/cli@17.3.8
+>ng new <projectName> --skip-install
+>cd <projectName>
+>npm install
+
+Note : use npm i when we want run application by creating node_modules folder inside our project
+package.lock.json : contain exact version of Angular project library 
+tsconfig.json : contain configuration of typescript
+angular.json : contain configuration of angular project
+
+Decorators - Attribute for class
+	it gives extra information about the class 
+
+following are the types of Decorators -:
+
+A] Class decorators
+
+@Component
+@Directive
+@Pipe
+@Injectable
+
+B]  Method Decorator
+
+@HostListener()
+
+c ] Field Decorator
+
+@Input() - pass data from parent comp to child comp
+@Output() - pass data from child comp to parent comp
+@ViewChild() - access child component or element using this or acccess HTML DOM
+
+---------------------------------------------------------------
+Example 1 :
+Here is a common use case where we change the background color of a directive when the mouse enters or leaves the host element:
+
+TypeScript
+import { Directive, HostListener, HostBinding } from '@angular/core';
+
+@Directive({
+  selector: '[appHighlight]'
+})
+export class HighlightDirective {
+
+  @HostBinding('style.backgroundColor') backgroundColor: string = 'transparent';
+
+  // Listen for the 'mouseenter' event on the host element
+  @HostListener('mouseenter') onMouseEnter() {
+    this.backgroundColor = 'yellow';
+  }
+
+  // Listen for the 'mouseleave' event on the host element
+  @HostListener('mouseleave') onMouseLeave() {
+    this.backgroundColor = 'transparent';
+  }
+}
+
+Handling Global events
+------------------------
+
+// Detect window resize
+@HostListener('window:resize', ['$event'])
+onResize(event: any) {
+  console.log('New window width:', event.target.innerWidth);
+}
+
+Example 2:
+
+ Note : you can access element in ngAfterViewInit()
+html :
+
+<div #tempElement>
+  <input type="text" value="Farukh">
+</div>
+
+<button (click)="readValue()">Read Value</button>
+
+---------------
+component.ts
+-----------
+
+import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+
+@Component({
+  selector: 'app-test',
+  templateUrl: './test.component.html'
+})
+export class TestComponent implements AfterViewInit {
+
+  @ViewChild('tempElement') tempElement!: ElementRef;
+
+  ngAfterViewInit() {
+    console.log(this.tempElement.nativeElement);
+  }
+
+  readValue() {
+    const input = this.tempElement.nativeElement.querySelector('input');
+    console.log(input.value);
+  }
+}
+
+What is ViewChild?
+Used to access DOM elements or child components from the template.
+
+What is ElementRef?
+A wrapper that gives direct access to native DOM element.
+
+Why is ElementRef dangerous?
+It can cause XSS and breaks Angular abstraction.
+
+So better option:
+👉 Renderer2
+
+---------
+constructor(private renderer: Renderer2) {}
+
+changeColor() {
+  this.renderer.setStyle(
+    this.tempElement.nativeElement,
+    'backgroundColor',
+    'yellow'
+  );
+}
+
+---------------------------------------------------------------
+
+
+ng serve - compile build, bundling on memory, spin up live development serve
+
+ng s -o = after compilation (compilation) open browser running out angular project on default port 4200
+ng s -o --port 4500 = if you want to run our application on 4500 port then this command is used
+
+Component 
+- Class + Template + Metadata
+- Component can be exposed like a tag using selector 
+-Creating a new component
+ > ng g c <componentName>
+ 
+Databinding
+- Its a mechanism to bind data values into html DOM & turn user activities into action
+- or communication between component to its html (template) or vice versa
+- Types of binding
+
+  Interpolation		Component => DOM   syntax :{{}}   : one direaction
+  Property Binding 	Component => DOM  syntax :[]      : one direaction  apply on attributes of html tag
+  Event Binding 	DOM => Component  syntax : ()     : one direaction
+  Two way Binding	Component <=> DOM  using ngModel   syntax : [(ngModel)]   Importing "FormsModule"  : Two way direaction
+  
+Directives
+- Extending the power of existing html element
+- It changes the appearance & behaviour of html element
+- Types of directive
+  1>Component - Its a directive with a template(html)
+  2>Structural directive - Altering, Adding or removing the DOM element  *ngIf, *ngFor
+  
+  Notes: always used trackBy for ngfor for searcing faster in DOM
+  
+  3>Attribute - Change the appearance of DOM element  
+   ngClass, ngSyle, ngModel
+  Notes: now ngClass are written in [class] now 
+  Ex: [class.rs] where r1 is class present in style.scss
+	  [style.color]='red' here style represent ngStyle
+	  
+  Custom directive
+  ->ng g d <directiveName>   ElementRef
+  
+  
+  
+Next Session
+-Custom directive
+-Pipes
+-Custom pipe
+-Routing
+
+---Day 4---
+Creating project with modules
+>ng new <projectName> --no-standalone
+
+@NgModule : is decorator which represent class in module 
+- Container that contains multiple components, directive, pipe, service, other modules
+
+Installing any packages in project
+>npm install <packageName> --save
+
+Note : --save store this packages in packge.json also so use it 
+
+Pipes
+-Transform bound values before displaying
+-number, uppercase, lowercase, date, currency, json
+
+Creating custom pipes
+>ng g p <pipeName>
+
+Routing
+-Loading a webpage based on requested url
+-Navigating from one page to other
+
+Steps to implement routing in angular
+- Import module "RouterModule"
+- Define list of routes
+   const routes: Routes = [
+  {path:'databinding', component: DatabindingComponent},
+  }
+- Map the RouterModule with routes
+	RouterModule.forRoot(routes)
+- Add place holder in app.component.html
+  <router-outlet></router-outlet>
+- Add navlink
+    <a class="nav-link" routerLinkActive="highlight" [routerLink]="['databinding']">DataBinding</a>
+
+Next Week
+-Routing - Reading route data, querystring, navigating	
+-Data Sharing
+-Angular Forms
+-unknown & any
+
+---Day 5---
+
+Activatedroute class
+
+ActivatedRoute is used to read route parameters and query strings in Angular using params,
+ queryParams, or snapshot
+
+- first we need to inject in constructor
+	import { ActivatedRoute } from '@angular/router';
+	constructor(private activatedRoute: ActivatedRoute) {}
+
+
+- To read route parameter & querystring  
+	{ path: 'product/:id', component: ProductComponent }
+
+	Note -: here id is parameter shows in ":id" syntac
+
+	this.activatedRoute.params.subscribe(params => {
+  		this.id = params['id'];
+	});
+
+
+   for querystring
+	/product?id=10&name=mobile
+
+	this.activatedRoute.queryParams.subscribe(params => {
+  		this.id = params['id'];
+  		this.name = params['name'];
+	});
+
+** Alternative without subscribe
+
+this.id = this.activatedRoute.snapshot.paramMap.get('id');
+this.id = this.activatedRoute.snapshot.queryParamMap.get('id');
+
+
+Router class
+
+- To navigate from one component to other
+	 this.router.navigate(['dir', this.product.productId], {
+      queryParams: {
+        city: "mumbai", country: 'india'
+      }
+    });
+	
+
+Data Sharing of component 
+
+-@Input() - Used to pass data from parent to child component in terms of property (created in child component)
+-@Output()- Used to pass data from child to parent in terms of events (created in child component)
+-@ViewChild() - Creating a ref of child component in parent & taking control of child component (created in Parent)
+
+** @Input() – Parent ➝ Child (data)
+
+Child component
+@Input() userName!: string;
+
+Parent component
+<app-child [userName]="'Farukh'"></app-child>
+
+
+** @Output() – Child ➝ Parent (event)
+
+Child component :
+@Output() notify = new EventEmitter<string>();
+
+sendData() {
+  this.notify.emit('Hello Parent');
+}
+
+Parent template
+<app-child (notify)="receiveData($event)"></app-child>
+
+Parent component
+receiveData(msg: string) {
+  console.log(msg);
+}
+
+
+@ViewChild() – Parent controls Child
+
+@ViewChild(ChildComponent) child!: ChildComponent;
+
+ngAfterViewInit() {
+  this.child.childMethod();
+}
+
+
+child.component
+
+childMethod() {
+  console.log('Called from parent');
+}
+
+
+@Input() → pass data parent to child
+@Output() → send events child to parent
+@ViewChild() → access child component or element directly
+
+--------------------------------------------------------
+
+--- Day 6 ---
+Angular Forms
+- Template Driven approach
+- Model Driven approach (Reactive Forms)
+- Signal Form
+
+Control States of html dom form
+- pristine => dirty
+- untouched => touched
+- valid <=> invalid
+
+Note : we want to show error only when form is dirty or touched and invalid
+
+Steps to implement TemplateDriven approach
+- Design a form and add template ref of type "ngForm"
+   <form #frm="ngForm"></form>
+- Add input elements and provide name & ngModel attribute 
+  Note : add FormsModule in component decorator imports array
+  Ex:
+  <input type="text" class="form-control" name="productId" [(ngModel)]="product.productId" />
+
+- Add ngSubmit event and pass frm object 
+  (ngSubmit)="saveProduct(frm)"
+
+- To add a validation, use html5 attributes
+  required, pattern, email, max, min, maxlength, minlength, phone
+
+- To show error message
+	 <div *ngIf="frm.controls['productCode']?.errors">
+		<span class="text-danger">Product Code is mandatory</span>
+	</div>
+---------------------------------------------------------------------
+
+Steps to implement Model Driven approach
+
+- Import a module in app.module.ts "ReactiveFormsModule"
+- Design the model in the ts code, using FormGroup & FormBuilder from @angular/Forms;
+
+	constructor(private fb:FormsBuilder){}
+	this.frm = this.fb.group({
+      productId: this.fb.control('')
+	  })
+
+- Map the fromGroup & formControl in html template
+    <form [formGroup]="frm">
+            <div class="form-group">
+                <label>Product Id</label>
+                <input type="text" class="form-control" formControlName="productId" />
+            </div>
+	</form>
+
+- Add ngSubmit event & no need to pass formgroup obj
+  (ngSubmit)="saveProduct()"
+- To add valdiation, add in ts code
+  productCode: this.fb.control('',{updateOn:'blur', validators: [Validators.required]})
+- To show error message
+	 <div *ngIf="frm.controls['productCode']?.errors">
+		<span class="text-danger">Product Code is mandatory</span>
+	</div>
+	
+---Day 7---
+
+ReactiveX
+- A library used for async programming with observable streams
+- Rx.Net, RxJava, RxJs
+
+RxJs
+  Observable
+  - Representation of set of values
+  - function that can return stream of values over the time (producer)
+  - Values can range from 0 to infinity
+  - Observable are called lazy, coz if there is no subsvcriber, it will not publish data
+  - This are unicast, Each subscriber gets independent instance of observable
+  Observer
+  - This are the one that listen to your produces data & notify the subscribers
+  - It has 3 callback function, it talks about different notification delivered by observable
+    next() - success info
+	error() - error info
+	complete() - a flag indicating end of stream
+  Operator
+  - Function that takes 1 observable as input & return another observable after manipulation
+  - pipe(op1, op2, op3)
+  
+  Subject
+  - Special type of observable that allows mulitcast to multiple observers (subscribers)
+  - It acts both producer & subscriber
+  - IT can emit always new values to subscriber like event emitter
+  
+  BehaviorSubject
+  - It is similar to regular subject but it can maintain the initial value.
+  - It makes sure that whoever is subscribing to the BehaviourSubject will ateast get last data always available.
+  
+  ReplaySubject
+  - It is similar to regular subject.You can configure to hold x values for a period of time.
+  - It can maitain a buffer size. 
+  - IT makes sure that whoever is subscribing to the ReplaySubject will alteast get those x no of data that is already stored.
+  
+1. Subject (The "Live Radio")
+A standard Subject is multicast, but it has no memory. If you tune into a radio station late, you don't hear the songs that played before you joined; you only hear what is playing right now.
+
+Theory: It does not store values. Subscribers only receive data emitted after they subscribe.
+
+Best for: Event bus logic, like clicking a "Global Save" button.
+
+TypeScript
+const subject = new Subject<number>();
+
+subject.next(1); // Lost (no one is listening)
+
+subject.subscribe(val => console.log('Sub A:', val));
+
+subject.next(2); // Sub A gets 2
+2. BehaviorSubject (The "Last Played")
+This is the most common Subject in Angular. It always has a "current value." When you subscribe, it immediately gives you the latest value it emitted.
+
+Theory: It requires an initial value. It stores the latest value and emits it to new subscribers immediately upon subscription.
+
+Best for: Storing "Current User" info or "Form State" in a service.
+
+TypeScript
+// Requires an initial value (0)
+const bSubject = new BehaviorSubject<number>(0); 
+
+bSubject.subscribe(val => console.log('Sub A:', val)); // Immediately gets 0
+
+bSubject.next(10); // Sub A gets 10
+
+bSubject.subscribe(val => console.log('Sub B:', val)); // Immediately gets 10
+3. ReplaySubject (The "DVR / Catch-up TV")
+This Subject acts like a recorder. It remembers a specific number of previous values and "replays" them for any new subscriber.
+
+Theory: It does not need an initial value. You define a buffer size (how many items to remember).
+
+Best for: Caching a list of data from an API so that multiple components can get the same history without re-calling the server.
+
+TypeScript
+// Buffer size of 2 (Remember last 2 values)
+const rSubject = new ReplaySubject<number>(2);
+
+rSubject.next(1);
+rSubject.next(2);
+rSubject.next(3);
+
+// Subscriber joins late
+rSubject.subscribe(val => console.log('Sub A:', val)); 
+// Output: 2, 3 (It missed 1, but got the last 2)
+
+
+
+---Day 8---
+
+Services
+- Used to share common functionality across components
+- It create singleton object by default
+ Create => Provide => Inject => Use
+>ng g s <seviceName>
+
+TreeShaking
+Its a comipiler option to check if the service is not referenced anywhere then remove the code from bundle
+Size of bundle is reduces & inital load performance is improved
+
+
+Steps to call webapi using Angular
+- Import a module "HttpClientModule" in app.module.ts
+- Create a service and inject a class "HttpClient"
+- Create methods for get,post,put,delete
+	 getProducts() {
+    return this.httpClient.get<Product[]>('https://localhost:7241/api/ProductAPI/getall');
+  }
+
+- Inject a service in the component/directive/pipe
+- Call the service method & call subscribe method in response we get success or error
+  this.productService.getProducts().subscribe({
+      next: (resp) => {
+        this.products = resp;
+      },
+      error:(err) => {
+        console.log(err);
+      }
+    })
+	
+---Day 9---
+Adding environment file
+> ng g environments
+
+Build the angular project, creates a dist folder within the root folder
+>ng build      							== build for production
+>ng build -configuration=development   	== build for development environment
+
+
+Lazy loading
+--------------
+
+-Loading the module/component at runtime based on requested url
+-Initial load size of application will be reduced by implmenting lazt loading, which will improve performance.
+>ng g m <module> --route=<pathName> --module=app
+-Lazy loading can be implmented using standalone component as well
+-Command for creating standalone component
+ >ng g c <compName> --standalone
+ 
+  { path: 'userhome', loadChildren: () => import('./modules/user/user.module').then(m => m.UserModule) },
+  { path: 'student', loadComponent: () => import('./student/student.component').then(c => c.StudentComponent) },
+
+---Day 10---
+
+Router guards
+- Guards are used to protect route from unauthorized access
+>ng g g <guardName>
+
+Types of guards
+- canActivate - Triggers when route is activated
+- canDeActivate - Tiggers when route is deactivated
+- canActivateChild - Triggers for children route but applied on parent route
+- canMatch - Similar to canActivate, but applied on lazy loading routes. This avoid downloading of js chunk if not having access.
+
+---Day 11---
+
+Life cycle hooks
+- Angular manages creation, rendering, data bound properties etc
+- Angular offers given lifecycle hooks that allow you to execute custom logic
+
+OnChanges - Triggerd when @Input() parameter is changed @Input()
+OnInIt - Tiggered on initialation of component
+DoCheck - Triggered when change detection happens
+AfterContentInit - Triggered when projected content is ready & available for access in code @ContentChild()
+AfterContentChecked - 
+AfterViewInit - @ViewChild()
+AfterViewChecked
+OnDestroy
+
+
+Projection :
+
+- Projecting the content within the start & close tag to render it inside the component template
+ <ng-content></ng-content>
+ @ContentChild()
+ 
+---Day 12---
+
+
+------------------------
+
+practice 
+
+class Person {
+
+	personId:number;
+	personName!:string;
+	
+	constructor(pid?:number,pNumber?:string)
+	{
+		if(!pid && !pNumber)
+		{
+			this.personId = pid;
+			this.personName = pNumber ?? '';
+		}
+		else
+		{
+			this.personId = 0;
+			this.personName = '';
+		}
+
+	}
+	
+	showDetails(pid:number)
+	{
+		console.log($`pid is {pid}`);
+	}
+
+	showDetails()
+	{
+		console.log('PersonId ${this.personId}');
+		console.log('Person Name ${this.personName}');
+	}
+
+}
+
+// create object
+let perObj = new Person(101,'Farukh');
+perObj.showDetails();
+
+by using tsc Person  it convert into  javascript code for run 
+node Person;
+
+---------------------------
+
+inheritence 
+
+class Employee extends Person
+{
+	empId:number;
+}
+
+let EmploueeObj = new Employee();
+
+EmploueeObj.
+
+-------------------------------
+Generics
+
+class Store<T>
+{
+	private List:T[];
+	
+	constructor()
+	{
+		this.List = [];
+	}
+	
+	additemPush(item : T)
+	{
+		this.List.push(item);
+	}
+	
+	removeItems(item:T)
+	{
+		this.List.pop(item);
+	}
+	
+	displayAllItems()
+	{
+		console.log('-- Displaying All Items -----');
+		for(let i of list)
+		{
+			console.log('i',i);
+		}
+	}
+}
+
+let storeObj = new Store<string>();
+storeObj.additemPush('a');
+storeObj.additemPush('b');
+storeObj.additemPush('c');
+
+---------------------------------------
+
+export interface IStudent
+{
+	studentId : number;
+}
+
+export class Student implements IStudent
+{
+	studenId : number;
+}
+
+-------------------------
+			Array
+			
+let num:int[] = [2,3,54,6];
+
+-------------------------
+
+Therad
+---------
+
+Paraller execution
+
+static void fun1()
+{
+	for(int i=0;i<100;i++)
+	{
+		console.writeLine();
+	}
+}
+
+static void fun2()
+{
+	for(int i=0;i<100;i++)
+	{
+		Console.writeLine();
+	}
+}
+
+
+static void Main()
+{
+	fun1();
+	fun2();
+	Console.
+	Console.Readkey();
+}
+
+---------------------------------------------------------------------------
+Angular Exercise 1:
+
+export class Product
+{
+	pId:number=0;
+	PName!:string;
+	pDescription!:string;
+	price:number;
+	qty:number;
+}
+@component()
+class ProductComponent implements Oninit
+{
+	productList:string[] = [];
+	let product1 = new Product(1,'LG','Electronics',100000,3);
+	let product2 = new Product(2,'Samsung','Mobile',300000,32);
+	
+	ngOninit()
+	{
+		this.productList.push(product1);
+		this.productList.push(product2);
+	}
+
+	AddNewProduct()
+	{
+		let product3 = new Product(3,'whirlpool','Fridge',20000,4);
+		this.productList.push(product3);
+	}	
+}
+
+html code
+
+<ul *ngFor="let product of productList">
+		<li>{{product.pId}}</li>
+		<li>{{product.PName}}</li>
+		<li>{{product.pDescription}}</li>
+		<li>{{product.price}}</li>
+		<li>{{product.qty}}</li>
+</ul>
+<button class="btn btn-primary" (click)="AddNewProduct()">Add</button>
+
+-------------------------------
+imp note :
+
+1> when array declare and when we add response data in array by push if error occure then make empty or before push also
+ bcoz after push if you load browser again then more data added.
+ex: int[] arr = new int[];
+in subscribe({
+	next(res)=>{
+		this arr = [];  // first empty then push
+		this arr.push(res);
+	},
+	err()=>{
+		this.arr=[] // assign empty when error occur
+	}
+})
+
+2> find current value of aray[pos-1]
+
+3> when you want to perform some changes in existing array element then use scope Operator [...arr]
+  Ex: here i want to new properties in array element then 
+
+Existing Array 
+
+let users = [
+  { id: 1, name: 'Umar' },
+  { id: 2, name: 'Ali' }
+];
+
+Suppose you want to add a new property isActive to every element.
+
+Using Spread Operator
+
+let updatedUsers = users.map(user => ({
+  ...user,
+  isActive: true
+}));
+
+console.log(updatedUsers);
+
+Output:
+[
+  { id: 1, name: 'Umar', isActive: true },
+  { id: 2, name: 'Ali', isActive: true }
+]
+
+
+
+3> in typescript of javascript month is always + 1 if you wannt to caluculate current month then use date.getMonth() + 1
+
+4> handling null or undefined for variable use !
+
+5> while pass data to post method create one object and mapping it
+   addProject(data:Item){
+		let addItem:Item={
+              id = data.id,
+			  name = data.name
+		}
+		this.addProjectData(addItem).subscribe({
+
+		})
+   }
+
+6> when we go to the html first check data is present or not using If()
+
+  Ex 1 : in ts data store in products array then 
+
+    html :
+	 if(Array.isArray(products) && products.length>0) 
+	{
+        // then add logic here
+	}
+
+  Ex 2:
+     @if (products?.length) { }
+
+
+7> handling error in model driven form try to optimize code like.
+   get f() { return this.form.controls; }
+   HTML: f.name.errors?.required.
+
+8> in services folder always create _index.ts file where you store your services path and try to import
+  by using _index.ts path only 
+
+9> install prettier and eslint for angular code extension in vs code.
+
+10 > when you subscribe api with obervables then try to unsubscribe when component destry right now mostly use 
+while subscribe(takeuntildestry()) as alternative
+
+11> avoid to use "any" datatype
+
+12> always use track or trackby when use @for or *ngFor()
+
+13> Never hardcode API URLs in your services. Always use environment.ts and environment.prod.ts.
+ This allows you to swap configurations automatically during ng build.
+ by using following command 
+  ng build -configuration=production
+
+14> 
+The "Classic" Way: ng-template & ng-container
+This is what you remembered. You define the "blueprint" once and stamp it out multiple times using ngTemplateOutlet.
+<ng-template #dropdownTemplate let-label="label">
+  <label>{{ label }}</label>
+  <select class="form-control">
+    @for (item of products; track item.id) {
+      <option [value]="item.id">{{ item.name }}</option>
+    }
+  </select>
+</ng-template>
+
+<ng-container 
+  *ngTemplateOutlet="dropdownTemplate; context: { label: 'Shipping Origin' }">
+</ng-container>
+
+<hr>
+
+<ng-container 
+  *ngTemplateOutlet="dropdownTemplate; context: { label: 'Delivery Destination' }">
+</ng-container>
+
+
+15> i have use bundleservice in Angular project after 15 min idle laptop it goes to the login page
+
+16> try to use filter() , find() ,some() and in html | async to handle observables instead of subscribed in ts code
+
+17 > you want to pass data from one component to another and store it then use localstorage or sessionstorage and try
+   to make empty after use also or make empty before set()
+    
+
+
+	1. Array Methods Cheat Sheet (Data Manipulation)
+
+	Method				Theory							Coding Example						Expected Result (The Output)
+
+	map()			Creates a new array by 				[1, 2, 3].map(x => x * 2)						[2, 4, 6]
+					transforming every element.
+	
+
+	filter()   		Returns all items that pass 		[10, 20, 30].filter(x => x > 15)				[20, 30]
+					a specific condition.
+
+	find()			Returns the first matching 			emps.find(e => e.id === 1)					{id: 1, name: 'John'}
+					element (or undefined).
+
+	findIndex()		Returns the index of the first		['a', 'b', 'c'].findIndex(x => x === 'b')		1
+					 match (or -1).
+
+	some()			Returns true if at least one		[1, 2, 3].some(x => x > 2)						true
+					 item matches.
+
+
+	every()		Returns true only if all items match.	[1, 2, 3].every(x => x > 0)						true
+
+
+	reduce()	Condenses array into a single 			[1, 2, 3].reduce((acc, val) => acc + val, 0)	6
+				value (like a sum).
+
+	includes() 	Checks if a primitive value exists 		['Red', 'Blue'].includes('Red')					true
+				in the array.
+
+	slice()		Returns a copy of a portion 			['a', 'b', 'c'].slice(0, 2)						['a', 'b']
+				(Original safe).
+
+	splice()	Removes/Adds items (Modifies original).	arr.splice(0, 1) // Remove 1 item at index 0	[The removed item]
+
+
+
+
+	2. String Methods Cheat Sheet (Text Formatting)
+
+
+	split()				Converts a string into an Array.	"A,B,C".split(",")				["A", "B", "C"]
+
+	trim()				Removes spaces from start and end.	" Hello ".trim()				"Hello"
+
+	toLowerCase()      Makes all letters small 				"ADMIN".toLowerCase()			"admin"
+						(good for comparison).
+
+	includes()			Checks if a substring exists 		"Angular".includes("ng")		true
+						inside a string.
+
+	replace()			Replaces the first match with 		"Hi John".replace("John", "Doe")  "Hi Doe"
+						new text.
+
+	substring()			Extracts text between two index 	"DOTNet".substring(0, 3)			"DOT"
+						positions.
+
+	startsWith()		Checks the beginning of the string.	"EMP101".startsWith("EMP")			true
+
+
+
+
+	Question 1 : How would you get the names of all employees in the 'Sales' department?
+	const result = 	employees
+  					.filter(emp => emp.dept === 'Sales') // Step 1: Selection
+  					.map(emp => emp.name);               // Step 2: Transformation
+
+	Output = ["John", "Sarah", "Mike"]
+
+
+find vs filter: find returns the object itself; filter returns an array containing the object.
+
+some vs includes: includes only works for simple values (like 5 or "Hi"); some works for complex objects (like emp.id === 5).
+
+map vs forEach: map returns a new array (Functional); forEach returns nothing (used for loops/logs).
+
+								
 ----------------------------------------------------------------------------------------------------------------------
 
 																	AI chatBot
@@ -8964,3 +12150,313 @@ etc. Extension methods move related configuration into dedicated classes, making
 
 
 --------------------------------------------------------------------------------------------------------
+
+
+Programe 1 : 
+
+input : google
+o/p : go  (show duplicate eleemtn in string)
+
+using System;
+using System.Text;
+using System.Collections.Generic;
+					
+public class Program
+{
+	public static void Main()
+	{
+		// find duplicate character in a string
+		
+		// google output : go
+		string str = "google";
+		
+		HashSet<char> hs = new HashSet<char>();
+		HashSet<char> duplicate = new HashSet<char>();
+		foreach(var ele in str)
+		{
+			if(!hs.Contains(ele))
+			{
+				hs.Add(ele);
+			}
+			else
+			{
+				duplicate.Add(ele);	
+			}
+			
+		}
+		foreach(var ele in duplicate)
+		{
+			Console.WriteLine(ele);
+		}
+		
+	}
+}
+
+// Reverse string
+
+i/p : Hello World
+o.p : olleH dlroW 
+
+using System;
+using System.Text;
+					
+public class Program
+{
+	public static void Main()
+	{
+		string str= "Hello World";
+		string[] words = str.Split(" ");
+		StringBuilder sb = new StringBuilder(); 
+		foreach(var ele in words)
+		{
+			for(int i=ele.Length-1;i>=0;i--)
+			{
+				sb.Append(ele[i]);	
+			}
+			sb.Append(" ");
+		}
+		Console.WriteLine(sb.ToString());
+	}
+}
+---------------------------------------------
+anagram , group anagram , prime ,
+-------------------------
+
+Ex : "listen"	"silent"  : true
+
+"aabc"	"abbc"	:false
+
+
+listen  -> silent  ✅
+
+aabc    -> abbc    ❌
+
+triangle -> integral ✅
+
+Two strings are anagrams if:
+
+Same length
+Same characters
+Same frequency of each character
+
+public static void Main()
+	{
+		string str1="listen";
+		string str2 = "silent";
+		
+		// use dictionary to count frequency of each character of string
+		
+		Dictionary<char,int> frequency = new Dictionary<char,int>();
+		
+		// check length same or not
+		if(!(str1.Length==str2.Length))
+		{
+			Console.WriteLine("string is not anagram");
+		}
+		
+		// check for string frequency count
+		
+		foreach(var ele in str1)
+		{
+			if(frequency.ContainsKey(ele))
+			{
+				frequency[ele]++;   // increatement if it is duplicate
+			}
+			else
+			{
+				frequency[ele]=1;  // assign 1 if not duplicate character
+			}
+		}
+		
+		// substract frequency comapre with other string str2
+		foreach(var e in str2)
+		{
+			if(frequency.ContainsKey(e))
+			{
+				 frequency[e]--;
+			}
+			else
+			{
+				frequency[e]=-1;
+			}
+		}
+		// if frequency count is not zero then it is not anagram
+		
+		foreach(var count in frequency)
+		{
+			if(count.Value!=0)
+			{
+				Console.WriteLine("string is not Anagram");
+				break;
+			}
+			else
+			{
+				Console.WriteLine("string is Anagram");
+				break;
+			}
+		}
+	}
+
+-----------------------------
+check paranthesis [({})] this is input
+
+public bool IsValid(string s)
+{
+    Stack<char> myStack = new Stack<char>();
+
+    foreach (char c in s)
+    {
+        // Opening bracket
+        if (c == '(' || c == '[' || c == '{')
+        {
+            myStack.Push(c);
+        }
+        // Closing bracket
+        else
+        {
+            // Stack is empty -> invalid
+            if (myStack.Count == 0)
+                return false;
+
+            // Remove top opening bracket
+            char top = myStack.Pop();
+
+            // Check matching pair
+            if (c == ')' && top != '(')
+                return false;
+
+            if (c == ']' && top != '[')
+                return false;
+
+            if (c == '}' && top != '{')
+                return false;
+        }
+    }
+
+    // Stack should be empty
+    return myStack.Count == 0;
+}
+
+--------------------
+Programme :
+second highest value of an array ?
+Hint first find hishest and second highest value then check highest value is not equal to second highest
+
+int highest = int.minValue;
+int second = int.minValue;
+for(int i=0;i<n;i++)
+{
+	if(arr[i]>highest)
+	{
+		highest = arr[i];
+		second = highest;
+	}
+	else(arr[i]>second && highest != second)
+	{
+		second = arr[i];
+	}
+}
+return second;
+
+------------------------------------------------
+bubble sort
+
+int arr = { 23,45,12,67,43,12,10 };
+
+for(int i=o;i<arr.length-1;i++)
+{
+	for(int j=1;j<arr.length-1;j++)
+	{
+		if(arr[i]>arr[j])
+		{
+			int temp = arr[i];
+			arr[i] = arr[j];
+			arr[j] = temp;
+		}
+	}
+
+}
+--------------------------------------
+//Input
+
+//[0, 1, 0, 3, 12]
+
+//Output
+
+//[1, 3, 12, 0, 0] // added zero at the end
+
+int[] arr = { 0, 1, 0, 3, 12 };
+int index = 0;
+int temp = 0;
+for(int i=0;i<arr.Length;i++)
+{
+    if (arr[i]!=0)
+    {
+        temp = arr[index];  // show non zero numbr in left side of array
+        arr[index] = arr[i]; // store actual value in left side of array
+        arr[i] = temp; // store zero value in right side of array
+        index++;  // after adding element and left side increase count to addnew element in left side of array
+    }
+}
+foreach(var ele in arr)
+{
+    Console.WriteLine(ele);
+}
+
+Console.ReadLine();
+------------------------
+
+//Input
+
+//arr = [2, 7, 11, 15]
+
+int target = 9;
+
+int[] arr = { 2, 7, 11, 15 };
+
+Dictionary<int, int> dict = new Dictionary<int, int>();
+for (int i = 0; i < arr.Length; i++)
+{
+    int complement = target - arr[i];
+    if (dict.ContainsKey(complement))
+    {
+        Console.WriteLine("Indices: {0}, {1}", dict[complement], i);
+        break;
+    }
+    dict[arr[i]] = i;
+    
+}
+
+
+
+// solution 1
+
+//Two sum array
+
+int[] arr = { 2, 7, 11, 15}
+;
+
+int target = 9;
+int start = 0;
+int end = arr.Length - 1;
+
+while (start < end)
+{
+    int sum = arr[start] + arr[end];
+    if (sum == target)
+    {
+        Console.WriteLine("{0} and {1} is {2}", arr[start], arr[end], target);
+        break;
+    }
+    else if (sum < target)
+    {
+        start++;
+    }
+    else
+    {
+        end--;
+    }
+}
+
+
+
