@@ -74,6 +74,7 @@ azure functions
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 												** Feature Module in Angular **
+												--------------------------------
 												
 Feature module ≠ lazy-loaded module.
 
@@ -129,15 +130,13 @@ Lazy loading describes when Angular loads it.
 
 That's the distinction.
 
----------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------
 
 												** Lazy Loading in Angular  **
 												
 How do you implement lazy loading in Angular?
 - Lazy loading means loading a feature only when the user navigates to it instead of including it in the initial application bundle. In the traditional NgModule architecture.
 we use loadChildren() to lazy-load a feature module. With standalone components, we can use loadComponent() to lazy-load a standalone component.
-
-
 
 Practical implementation ?
 
@@ -149,13 +148,11 @@ That order is actually useful because you'll understand what Angular is doing in
 
 Suppose we have:
 
-
 App
  ├── Home
  ├── Employee
  └── Admin
- 
- 
+  
  
  We don't want Angular to load the Employee code when the application starts.
 
@@ -414,10 +411,11 @@ Angular application flow in the traditional NgModule architecture, start with in
 after standalone 
 ----------------
 
-- index.html is loaded first. It contains the root element. main.ts is the Angular entry point and calls bootstrapApplication() with the root standalone component and 
+- index.html is loaded first. It contains the root element. main.ts is the Angular entry point and calls bootstrapApplication() 
+  with the root standalone component and 
   application configuration. The application configuration provides global providers such as routing, HttpClient and interceptors. 
 - Angular then bootstraps the root component into the root element.
--Its template is rendered, and if it contains a router-outlet, Angular's router renders the component corresponding to the current route there.
+- Its template is rendered, and if it contains a router-outlet, Angular's router renders the component corresponding to the current route there.
 
 1. index.html
        ↓
@@ -502,9 +500,7 @@ export class AppComponent {
 
 
 Angular creates this component and renders it into:
-
 <app-root></app-root>
-
 from index.html.
 
 
@@ -535,12 +531,15 @@ EmployeeComponent
 ------------------------------------------------------------------------------------------------------------------------
 															** Asp.NET Core flow **
 															
-Explain the ASP.NET Core Web API request flow with authentication and authorization.
+Q > Explain the ASP.NET Core Web API request flow with authentication and authorization.
 
-The request comes from the Angular client and, when IIS is being used as a reverse proxy, IIS forwards it to Kestrel. Kestrel passes it into the ASP.NET Core middleware pipeline. 
-Routing identifies the endpoint, authentication validates the JWT and establishes the user's identity, and authorization checks whether the user is allowed to access the endpoint,
+-  The request comes from the Angular client and, when IIS is being used as a reverse proxy, IIS forwards it to Kestrel. Kestrel passes it into
+the ASP.NET Core middleware pipeline. 
+Routing identifies the endpoint, authentication validates the JWT and establishes the user's identity, and authorization checks whether 
+the user is allowed to access the endpoint,
 such as through the [Authorize] attribute. If authorization succeeds, the controller executes and calls the service,
-which calls the repository and EF Core to access SQL Server. The result travels back through the application and middleware pipeline and is returned to the Angular client
+which calls the repository and EF Core to access SQL Server. The result travels back through the application and middleware pipeline 
+and is returned to the Angular client
 
                 REQUEST
                    ↓
@@ -922,8 +921,7 @@ IIS
 Kestrel
    ↓
 Middleware
-   ↓
-   
+   ↓   
  Routing
  ↓
 UseAuthentication()
@@ -1076,7 +1074,6 @@ public class EmployeesController : ControllerBase
     {
         var employee =
             await _employeeService.GetEmployeeIdAsync(id);
-
         return Ok(employee);
     }
 }
@@ -1101,10 +1098,8 @@ public async Task<EmployeeDTO?> GetEmployeeIdAsync(int id)
         throw new ArgumentException(
             "Employee ID must be greater than zero.");
     }
-
     var employee =
         await _employeeRepositories.GetEmployeeByIdAsync(id);
-
     return employee;
 }
 
@@ -1181,8 +1176,8 @@ Middeware = handle request and response
 
 class customeTimeCheck 
 {
-	RequestDelegate _next
-   ctor(RequestDelegate next)
+   private readonly RequestDelegate _next
+   public customeTimeCheck(RequestDelegate next)
    {
        _next = next;
    }
@@ -1191,13 +1186,13 @@ class customeTimeCheck
    {
       var checkTime = DatetTime.Now();
 	  await _next(context); // called next middeware
-	  
 	  var finalTime = checkTime - DatetTime.Now();
    
    }
 
 }
 
+// register your middleware in program.cs
 
 program.cs
 builder.app.UseMiddeware<customeTimeCheck>();
@@ -1214,10 +1209,10 @@ public IActioncontroller HomeControe(customer obj1 , customer obj2)
 
 builder.services.AddTranscient<>();    every you inject object instance is created  Ex sms or email
 
-builder.Services.AddSingleton<>();   only one object instance create for whole application Ex like configuration
+builder.Services.AddSingleton<>();   only one object instance create for whole application Ex like configuration , caching
 
---------------------------------------------------------------------------------------------
-																JWT (Json Web Token)
+-----------------------------------------------------------------------------------------------------------------------------------------
+															***	JWT (Json Web Token) ***
 
 1. Client sends credentials to the server. i.e pass username and password 
 2. Server respons backs with a token .
@@ -1225,7 +1220,8 @@ builder.Services.AddSingleton<>();   only one object instance create for whole a
 
 
 why it is called JWT Token ?
-JWT stands for (Json Web Based Token) . JSON stands for (Javascript Object notation) . JSON is data format with name and value so we receive token in JSON Format  so it termed as 
+JWT stands for (Json Web Based Token) . JSON stands for (Javascript Object notation) . JSON is data format with name and value so we receive token in JSON Format
+so it termed as 
 Json Token .
 
 
@@ -1246,7 +1242,7 @@ expiryTime
 Authentication talks about who is the user i.e check in database user is present or not ?
 Authorization talk about what kind of rights user has  i.e what kind of roles user has ?
 
-PAyload is simple Encoded
+Payload is simple Encoded
 Encoding is not encryption
 
 
@@ -1459,7 +1455,7 @@ Even typing /login manually redirects to the dashboard.
 
 
 Question: Access Token vs Refresh Token ?
-- Access Token (JWT Token) are token which helps you to access a secure resource  while refresh token helps you to get new Token.
+- Access Token (JWT Token) are token which helps you to access a secure resource while refresh token helps you to get new Token.
 
 															** Refresh Token  **
 															
@@ -1516,40 +1512,26 @@ Interceptor
 return next(authReq).pipe(
 
    catchError((error)=>{
-
       if(error.status===401){
-
           return authService.refreshToken().pipe(
-
              switchMap((response)=>{
-
                 localStorage.setItem(
                     'token',
                     response.accessToken
                 );
-
                 const retryRequest =
                     req.clone({
-
                      setHeaders:{
                         Authorization:
                         `Bearer ${response.accessToken}`
                      }
-
                     });
-
                 return next(retryRequest);
-
              })
-
           );
-
       }
-
       return throwError(()=>error);
-
    })
-
 );
 				|
 				
@@ -1632,7 +1614,58 @@ This is what you use for internet-facing websites.
 				
 				
 ------------------------------------------------------------------------------------------
+How migration happen in angular ?
 
+                    Angular 15 application
+                            │
+                            ▼
+                    Is it currently healthy?
+                       /             \
+                     YES              NO
+                      │                │
+                      ▼                ▼
+               ng update path     stabilize first
+                      │
+                      ▼
+                  Angular 16
+                      │
+                      ▼
+                  Build/Test
+                      │
+                      ▼
+                  Angular 17
+                      │
+                      ▼
+                  Build/Test
+                      │
+                     ...
+                      │
+                      ▼
+                  Angular 22
+                      │
+                      ▼
+              Modernization
+			  
+			  
+			  
+| Command       | What it does                                                                  |
+| ------------- | ----------------------------------------------------------------------------- |
+| `npm install` | Installs dependencies and can update `package-lock.json`                      |
+| `npm ci`      | Deletes `node_modules` and installs **exactly** what's in `package-lock.json` |
+| `npm update`  | Tries to update packages within allowed version ranges                        |
+| `ng update`   | Performs Angular framework/package upgrades **plus Angular migrations**       |
+
+
+ng update @angular/core@19 @angular/cli@19  
+ng update
+npm view primeng@20 peerDependencies  -- it show dependencies for this packages required
+ng version
+npm ls
+sometime we need
+npm install @angular/core@21.2.9 @angular/cli@21.2.9 @angular/animations@21.2.9 @angular/common@21.2.9 @angular/compiler@21.2.9
+then push code with commit to branch
+
+------------------------------------------------------------------------------------------
 Quest: in angular how environment created 
 
 create environment folder inside src  
@@ -1662,7 +1695,7 @@ in production
                 "replace": "src/environments/environment.ts",
                 "with": "src/environments/environment.production.ts"
               }
-	under build section and 
+	under build section then configuration and 
 below for serve section
 
  "production": {
@@ -1850,31 +1883,73 @@ in html routeLink check menuItems
 ------------------------------------------------
 find target of particular array
 
-hashset<int> sh = new Hashset<int>();
-for(int i=0;i<=arr.length;i++)
+using System;
+using System.Collections.Generic;
+					
+public class Program
 {
-	inr compliment = target - arr[i];
-	if(sh.Contains(compliment))
+	public static void Main()
 	{
-		Console.WriteLine($"{compliment} + {arr[i]} = {target}");
+		int[] arr = {10,4,5,2,8};
+		int target = 12;
+		HashSet<int> checksum = new HashSet<int>();
+		for(int i=0;i<arr.Length;i++)
+		{
+			// find remain value
+			int compliment = target-arr[i];
+			// check value present in HasSet or not 
+			if(checksum.Contains(compliment))
+			{
+				
+				Console.WriteLine($"{arr[i]} and {compliment} are found for {target}");
+			}
+			else
+			{
+				// value not present then add in HashSet array 
+			  checksum.Add(arr[i]);	
+			}
+		}
 	}
-
-}
------------------------
+}---------------------
 two pointer approach
 
-left = 0;
-right  = arr.length -1;
+using System;
 
-while(left<right)
+public class Program
 {
-
-  if(arr[left]+arr[right]=target)
-  {
-     left++ ;
-	 right-- ;
-	 cw(")
-  }
+	public static void Main()
+	{
+		int[] arr = {10, 4, 5, 2, 8};
+		int target = 12;
+		
+		// 1. The two-pointer approach requires a sorted array
+		Array.Sort(arr); // arr becomes {2, 4, 5, 8, 10}
+		
+		int left = 0;
+		int right = arr.Length - 1;
+		
+		while (left < right)
+		{
+			int currentSum = arr[left] + arr[right];
+			
+			if (currentSum == target)
+			{
+				Console.WriteLine($"{arr[left]} and {arr[right]} are found for {target}");
+				left++;
+				right--;
+			}
+			else if (currentSum < target)
+			{
+				// Sum is too small, move left pointer to increase sum
+				left++; 
+			}
+			else
+			{
+				// Sum is too large, move right pointer to decrease sum
+				right--; 
+			}
+		}
+	}
 }
 
 ----------------------------------
@@ -1891,6 +1966,7 @@ create table #Dest(
 
 
 Window function in sql server
+----------------------------------
 
 select row_number() over(order by customerName) as orderCustomerName from tblCustomer;
 // create new number
@@ -1903,8 +1979,6 @@ select rank() over(order by customerName) as ordercustomerName from tblCustomer;
 
 // above rank() probelm id it create gap while assign unique value to avoid this dense_rank() is used
 select dense_rank() over(order by customerName) as OrderName from tblCustomer;
-
-
 
 ----------------------------
 find second largest employee of employee table
@@ -1950,11 +2024,13 @@ create table tbl2(id_fk int references tbl(id))
 -----------------------------
 
 What is a Design Pattern?
-A Design Pattern is a reusable solution to a commonly occurring software design problem. It is not code, but a proven way of structuring classes and objects.
+A Design Pattern is a reusable solution to a commonly occurring software design problem. It is not code,
+but a proven way of structuring classes and objects.
 
 Interview Definition:
 
-A design pattern is a reusable, well-tested solution to a common software design problem. It provides a standard approach to designing software but is not a ready-made implementation.
+A design pattern is a reusable, well-tested solution to a common software design problem. 
+It provides a standard approach to designing software but is not a ready-made implementation.
 
 Types of Design Patterns
 1. Creational Patterns
@@ -2317,8 +2393,8 @@ Unit of Work is for "One Database" (Local consistency).
 Saga Pattern is for "Multiple Databases" (Distributed consistency).
 
 
-----------------------------------------------------------------------------------------------------
-																		3. CQRS (Command Query Responsibility Segregation )
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+													3. CQRS (Command Query Responsibility Segregation )
 																		
 Q1. What is CQRS?
 
@@ -2375,7 +2451,7 @@ QueryHandler         CommandHandler
 
         │                   │
 
- Read DB             Write DB
+    Read DB               Write DB
  
  
  Now reading and writing are independent.
@@ -2634,7 +2710,7 @@ Newtonsoft.Json (Json.NET)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-                                                              -----------------  LINQ ------------------------
+                                                  -----------------  LINQ (Language Integrated Query) ------------------------
 															  
 List<Employee>? employees = new List<Employee>() { 
     new Employee(){ Id=1,Name="Tom",Email="tom@gmail.com" },
@@ -2669,7 +2745,7 @@ var dataSource = new List<Employee>()
 // It takes those three inner lists of programming and flattens them. when we have 1 to many relationship														
 var methodQuery = dataSource.selectMany(e=>e.Programming).ToList();
 
-Quest 3> Get all unique programming languages used in the company
+Quest 3> Get all unique programming languages used in the company.
 
 var uniqueLanguage = dataSource.selectMany(e=>e.programming)
 					.distint()                 // find unique by removing duplicate element
@@ -2705,7 +2781,7 @@ Quest 5> Sorting in LINQ
   
   // The Correct Professional Way
   var result = employees.OrderByDescending(e => e.Name) // Primary Sort (Z to A)
-                      .ThenBy(e => e.Id);            // Secondary Sort (1 to 100)
+                      .ThenBy(e => e.Id);              // Secondary Sort (1 to 100)
 					  
 					  
 					  
@@ -2804,14 +2880,10 @@ Step 3: Repository
 public async Task<List<Employee>> GetEmployees(Pagination pagination)
 {
     return await _context.Employees
-
         .OrderBy(e => e.Id)
-
         .Skip((pagination.PageNumber - 1) * pagination.PageSize) // skip records of previous page where it should start with 1 not 0
-
         .Take(pagination.PageSize)
-
-        .ToListAsync();
+		.ToListAsync();
 }
 
 
@@ -2821,10 +2893,8 @@ Step 4: Controller
 public async Task<IActionResult> GetEmployees(
     [FromQuery] Pagination pagination)
 {
-    var employees =
-        await _employeeRepository.GetEmployees(pagination);
-
-    return Ok(employees);
+    var employees = await _employeeRepository.GetEmployees(pagination);
+	return Ok(employees);
 }
 
 
@@ -2959,7 +3029,6 @@ extract critical financial data with up to 98% accuracy
  so specially i have worked on two project Module Document classification and data extraction and and loan global page where we see each customer having borrower loan 	 
 
 
-
 Document Classification: Developed a high-performance Angular UI for manual reclassification (drag-and-drop, undo/redo) 
 to supplement AI indexing of 350+ document types with 95% accuracy
 .
@@ -2976,7 +3045,7 @@ Microservices Architecture: Managed services for LOS (Blob Storage) and AI-drive
 Roles and Responsibility
 
 gather information of project with BA team
-creatre sprint with technical manager and producy owner on jira
+creatre sprint with technical manager and product owner on jira
 inside sprint create task nd subtask assign with time and add flowchart and algorith step and images upload on this task with tech lead
 daily sprint meeting accept task given by manager and team lead
 start development by converting figma design to actual design by suing html ,cc, angular for html , css take help og designer team
@@ -3071,6 +3140,9 @@ Here, an exception is thrown because division by zero is not allowed.
 Answer:
 
 Exception handling prevents the application from crashing unexpectedly and allows us to handle errors gracefully.
+
+1:inside try block we write suspicious code if any exception occur it passed to the catch bock
+2:catch handle exception and show what exception occur
 
 Example:
 
@@ -3225,15 +3297,15 @@ Resets the stack trace to the current catch block.
 Yes.
 
 
-catch (InvalidDenominatorException ex)
+catch (InvalidDenominatorException ex) // custom exception
 {
 }
 
-catch (DivideByZeroException ex)
+catch (DivideByZeroException ex) // custom exception
 {
 }
 
-catch (Exception ex)
+catch (Exception ex) // always last write it after custom exception
 {
 }
 
@@ -3251,6 +3323,7 @@ Output
 [2, 3, 4, 5, 1]
 
 Logic
+
 Save first element.
 Shift all remaining elements one position to the left.
 Put the saved element at the end.
@@ -3372,7 +3445,8 @@ class Program
 
 
 -----------------------------------------------------------------------------------------------------
-covariant : Covariance preserve assignment compactibility between parent and child relationship during dynamic polymorphism using "out" keyword
+covariant : 
+	- Covariance preserve assignment compactibility between parent and child relationship during dynamic polymorphism using "out" keyword
 
 class Animal
 {
@@ -3381,6 +3455,7 @@ class Animal
 
 class Human : Animal
 {
+
 }
 
 class Dog : Animal
@@ -3418,6 +3493,7 @@ class Program
 }
 -------------------------------------------------------------------------------------------------------------------------------
 							** DI Lifetime and HttpClient ***
+							---------------------------------
 
 
 how to run paraller api call using HttpClient Factory
@@ -3580,27 +3656,19 @@ public class EmailService
 }
 
 Notice:
-
+-------
 There is no state.
-
 Every email is independent.
-
 Today's email doesn't depend on yesterday's email.
 
 so
 
 Send Email
-
 ↓
-
 Object Created
-
 ↓
-
 Email Sent
-
 ↓
-
 Object Disposed
 
 
@@ -3611,6 +3679,7 @@ Stateful or Stateless
 This is the key concept.
 
 Stateless Service
+-----------------
 
 EmailService
 SmsService
@@ -3629,7 +3698,7 @@ Discount
 
 Needs state during the request.
 Often:
-Scoped
+Scoped:
 
 --------------------------
 Shared Application State
@@ -3644,15 +3713,17 @@ Singleton
 
 
 Interview Scenario
+-----------------
 
 Why is Repository Scoped?
 
-"Repository depends on DbContext, and DbContext is scoped to a single HTTP request. Using Scoped ensures all repositories in that request share the same DbContext, 
+  - ",Repository depends on DbContext, and DbContext is scoped to a single HTTP request. Using Scoped ensures all repositories in that request share the same DbContext, 
 which supports a consistent unit of work and proper transaction handling."
 
 
-Why is EmailService Transient?
-"EmailService is stateless. Each email operation is independent and doesn't need to share data with other operations or requests. 
+ Why is EmailService Transient?
+
+- "EmailService is stateless. Each email operation is independent and doesn't need to share data with other operations or requests. 
 Creating a new instance each time avoids unnecessary shared state and makes the service naturally thread-safe."
 
 
@@ -12458,5 +12529,84 @@ while (start < end)
     }
 }
 
+----------------------------------------------
 
+							** Add custom validators in angular
 
+-- check input contain english only character 
+
+import { AbstractControl, ValidationErrors, ValidatorFn } from "@angular/forms";
+import { detect } from 'tinyld';
+
+export function englishOnlyValidators(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+        const value = control.value?.trim();
+
+        // Let Validators.required handle empty value
+        if (!value) {
+            return null;
+        }
+
+        const language = detect(value);
+
+        return language == 'en' ? null : { englishOnly: true };
+
+    }
+}
+
+in component added this valdiators in 'message' formControl
+-----------------------
+import { englishOnlyValidators } from '../../../features/Validators/english-only.validator';
+
+@Component({
+  imports: [CommonModule, ReactiveFormsModule],
+  selector: 'DigitalPeaceWall-add-post',
+  styleUrl: './add-post.scss',
+  templateUrl: './add-post.html',
+})
+export class AddPost {
+
+  private fb = inject(FormBuilder);
+  // inject services here
+  private readonly postservice = inject(Post);
+
+  addForm = this.fb.nonNullable.group({
+    displayName: ['', Validators.required],
+    country: ['', Validators.required],
+    conflictZone: ['', Validators.required],
+    message: ['', [Validators.required, Validators.minLength(3), englishOnlyValidators()]],  // added here englishOnlyValidators()
+    consent: [false, Validators.requiredTrue]
+  })
+  
+  
+ HTML code - add validation here
+ ------------
+    <div class="mb-3">
+            <label class="form-label">Message</label>
+            <textarea class="form-control" rows="5" formControlName="message"
+                placeholder="Enter your message"></textarea>
+            @if (addForm.controls.message.touched && addForm.controls.message.invalid) {
+            @if(addForm.controls.message.hasError('required')){
+            <div class="text-danger">
+                Message is required.
+            </div>
+            }
+            @if (addForm.controls.message.touched && addForm.controls.message.invalid) {
+            @if(addForm.controls.message.hasError('englishOnly'))
+            {
+            <div class="text-danger">
+                 Only English messages are allowed.
+            </div>
+            }
+            }
+        </div>
+  
+  
+  
+  i/p
+  
+English message       → valid
+Hindi message         → invalid
+Arabic message        → invalid
+Empty message         → ignored by this validator
+Short/ambiguous text  → decide expected behavior
