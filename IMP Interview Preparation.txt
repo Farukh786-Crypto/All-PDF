@@ -14,8 +14,11 @@ Preparation topic
 Today : 
 Authentication and Authorization (JWT Token and RT)
 Http call parllel
+Sonarcube implment in our project
+test cases
 
 
+-----------------------------------------------
 
 
 .NET
@@ -28,22 +31,24 @@ DTO,
 create infrastucture
 Extension class
 Mapper
-Loggin (serilog),
+Logging (serilog),
 send email (Hangfire background service)
 controller,
 addcors,
 middleware,
 extension,
-memorychache
+memorycache
 api version swagger
 CQRS patteren + mediator patteren
 Jwt token code
-signalR
+signalR()
 payment gateway ()
 otp code
 Authorization role, filter
 Unit testing
-
+sonarcube
+eslint
+---------------------------------
 
 Angular 
 
@@ -87,7 +92,7 @@ EmployeeModule
     ├── EmployeeService
     └── EmployeeRoutingModule
 	
-That's a feature module because it represents the Employee feature.
+That's a feature module because it represents the Employee feature.create collection of this feature
 
 It can be eagerly loaded
 
@@ -101,7 +106,6 @@ You could import it directly:
 export class AppModule {}
 
 Then it's a feature module, but not lazy loaded.
-
 Or it can be lazy loaded
 
 {
@@ -115,7 +119,6 @@ Or it can be lazy loaded
 Now the same EmployeeModule is:
 
 feature module + lazy-loaded module.
-
 So remember
 
 Feature Module
@@ -141,7 +144,7 @@ we use loadChildren() to lazy-load a feature module. With standalone components,
 Practical implementation ?
 
 Angular lazy loading in the traditional NgModule approach first, then do the standalone approach. 
-That order is actually useful because you'll understand what Angular is doing instead of just memorizing loadComponent().
+That order is actually usefull because you'll understand what Angular is doing instead of just memorizing loadComponent().
 
 
 1. Lazy loading without standalone components — NgModule approach
@@ -287,7 +290,7 @@ Employees
 Angular navigates to:
 
 /employee
-
+m
 Router sees:
 
 loadChildren: () =>
@@ -447,7 +450,6 @@ The browser initially loads:
 2. main.ts
 
 This is the entry point.
-
 Typical modern Angular:
 
 bootstrapApplication(AppComponent, appConfig)
@@ -461,7 +463,6 @@ Bootstrap AppComponent and use appConfig.
 3. app.config.ts
 
 This contains application-wide providers/configuration.
-
 For example:
 
 export const appConfig: ApplicationConfig = {
@@ -529,11 +530,11 @@ EmployeeComponent
 <router-outlet>
 
 ------------------------------------------------------------------------------------------------------------------------
-															** Asp.NET Core flow **
-															
+										** Asp.NET Core flow **
+									   -----------------------
 Q > Explain the ASP.NET Core Web API request flow with authentication and authorization.
 
--  The request comes from the Angular client and, when IIS is being used as a reverse proxy, IIS forwards it to Kestrel. Kestrel passes it into
+-  The request comes from the Angular client and, when IIS(Internet Information Service) is being used as a reverse proxy, IIS forwards it to Kestrel. Kestrel passes it into
 the ASP.NET Core middleware pipeline. 
 Routing identifies the endpoint, authentication validates the JWT and establishes the user's identity, and authorization checks whether 
 the user is allowed to access the endpoint,
@@ -751,6 +752,7 @@ app.mapControllers();
 
 
 Remember this order
+
 UseAuthentication()
         ↓
 UseAuthorization()
@@ -758,22 +760,15 @@ UseAuthorization()
 Controller
 
 
-
 A middleware might look like:
 
 public async Task InvokeAsync(HttpContext context)
 {
     var start = DateTime.UtcNow;
-
     _logger.LogInformation("Request started");
-
     await _next(context);
-
     var elapsed = DateTime.UtcNow - start;
-
-    _logger.LogInformation(
-        "Request completed in {Time} ms",
-        elapsed.TotalMilliseconds);
+    _logger.LogInformation("Request completed in {Time} ms",elapsed.TotalMilliseconds);
 }
 
 
@@ -1164,20 +1159,21 @@ Angular
 
 --------------------------------------------------------------------------------------------------------------------------------
 
-
-
 Assignment : need to do usermanagement ui then add project tracking code find employe list from date to to date
 
 -------------------------------------------
 In angular Two Way binding achieve by using [(ngModel)] in import[FormsModule] in component .
+
+Ex: if we have select dropdown now you when you select option \you want to pass to ts using ([ngModel]) when (change)=onCountryChange()
+that time we store in ts and clear it also
 ----------------------------------------------------------------------------------------------
 
 Middeware = handle request and response
 
-class customeTimeCheck 
+class customerTimeCheck 
 {
    private readonly RequestDelegate _next
-   public customeTimeCheck(RequestDelegate next)
+   public customerTimeCheck(RequestDelegate next)
    {
        _next = next;
    }
@@ -1579,7 +1575,7 @@ If yes → log them in. If no → create a new account.
  
  
  
-OAuth (what kind of rights user has i.e Authorization) - when token create users and roles also  for communication of client and server 
+OAuth (what kind of rights user has i.e Authorization) - when token create users and roles also for communication of client and server 
  - When third party application tried to access resources 
 
 
@@ -1594,9 +1590,7 @@ Note : scope is roles in identity server .
 │             │                    │                     │     scopes"        │   = Resource│
 │             │                    │                     │                    │   Server)   │
 └─────────────┘                    └─────────────────────┘                    └─────────────┘
-                              3. Token has scopes: [read_email, send_email]
-							  
-							  
+                              3. Token has scopes: [read_email, send_email]			  
 							  
 							  
 OpenID Connect - comnine both open id and OAuth i.e when you want to authentication and authorization as well like inernet website .
@@ -1664,6 +1658,15 @@ npm ls
 sometime we need
 npm install @angular/core@21.2.9 @angular/cli@21.2.9 @angular/animations@21.2.9 @angular/common@21.2.9 @angular/compiler@21.2.9
 then push code with commit to branch
+
+
+Migration in .net
+----------------------------------------
+
+got to csproj file then chenage <targetFramework>.Net 10.0 </targetFramework>
+resolve issue
+then dotnet restores
+dotnet build
 
 ------------------------------------------------------------------------------------------
 Quest: in angular how environment created 
@@ -2310,7 +2313,7 @@ Single Responsibility Principle – The controller handles requests, while the f
 
  -----------------------------------------------------------------------------------------------------------------------------
  
-																		2. Unit Of Work 
+											2. Unit Of Work 
 																		
 
 In your microservices project (specifically the Ordering.API which uses SQL Server), you might have multiple repositories—for example, an OrderRepository and a CustomerRepository.
@@ -2719,6 +2722,8 @@ List<Employee>? employees = new List<Employee>() {
     new Employee(){ Id=4,Name="Kim",Email="kim@gmail.com" },
 };
 
+// if you want to select partcular column
+
 var methodsyntax = employees.select(e=>e.id).toList();
 var methodsyntax = employees.select(e=>new { e.Id , e.Name }).ToList();
 
@@ -2822,6 +2827,10 @@ var list2 = new List<int> { 3, 4, 5, 6 };
   
   // union -  combine two result set of removing duplicate records
   list1.union.(list2)  // {1, 2, 3, 4, 5, 6} (Combines both, removes duplicates)
+  
+  
+  Note : if you want unique record of one table then use "distinct()" 
+		 if you want unique records of mulitple table then use "union()"
   
   
   Query 9> Pagination
@@ -3046,14 +3055,14 @@ Roles and Responsibility
 
 gather information of project with BA team
 creatre sprint with technical manager and product owner on jira
-inside sprint create task nd subtask assign with time and add flowchart and algorith step and images upload on this task with tech lead
+inside sprint create task and subtask assign with time and add flowchart and algorithm step and images upload on this task with tech lead
 daily sprint meeting accept task given by manager and team lead
-start development by converting figma design to actual design by suing html ,cc, angular for html , css take help og designer team
+start development by converting figma design to actual design by using html ,cc, angular for html , css take help og designer team
 after development assign to Qa for testing this task
 if bug rasied by QA inside task this story again assign to me with raised bug by QA team
-solve this issue with add ROC if this big or add description  then deployment code to development ina zure via visual stuido code 
-after development it trigger to QA envirnonment inform Qa team and assign this story to QA again
-take meeting with other team if anything happen setup war room for major bug 
+solve this issue with add ROC (Root Of Cause) if this big or add description then deployment code to development in azure via visual studio code 
+after development it trigger to QA envirnonment inform Qa team and assign this story to QA again .
+take meeting with other team if anything happen setup war room for major bug .
 
 
 19 Dec 2022
@@ -3156,9 +3165,7 @@ catch (Exception ex)
 }
 
 3. What is a Custom Exception?
-
 Answer:
-
 A custom exception is a user-defined exception created by inheriting the Exception class. It is used to represent application-specific errors.
 
 Example:
@@ -3369,7 +3376,7 @@ for (int i = arr.Length - 1; i > 0; i--)
 arr[0] = last;
 
 Console.WriteLine(string.Join(", ", arr));
-
+------------------------------------------------------
 
 Rotate Left by K Positions
 
@@ -3408,6 +3415,8 @@ Output
 
 -------------------------------------------------------------------------------------------
 												Yield keyword in c#
+												--------------------
+												
 
 yield = perform statefull iteration instead of create temp array we use yield keyword to perform statefull iteration
 Example : in below example instead of write filter logic for that we need to create temp collection but we use yield keyword
@@ -3595,6 +3604,103 @@ public async Task<DashboardData> LoadDashboardParallel()
 } 
 Start all three, then WhenAll waits once. Time = longest task, not sum. On our Azure-hosted microservices, 
 this was the difference between a snappy dashboard and a timeout."
+----------------------------------------------------------------------------------------------------------------
+in Angular if we have dashboard component where we get all get api response use
+
+You have 5 dashboard APIs. Which approach will you use?
+Good answer:
+"Since Angular HttpClient returns Observables, I would use forkJoin(). It executes all HTTP requests in parallel and emits the combined result 
+after all requests complete successfully.If I were working with Promise-based APIs instead, I would use Promise.all()."
+
+
+// below we have example 
+
+ getAllUsers() {
+    return this.http.get('https://jsonplaceholder.typicode.com/users');
+    //return this.http.get('https://jsonplaceholder.typicode.com/users').pipe(delay(3000)); // Added delay for demonstration
+  }
+
+  getAllComments() {
+    return this.http.get('https://jsonplaceholder.typicode.com/comments');
+  }
+
+  getAllPhotos() {
+    return this.http.get('https://jsonplaceholder.typicode.com/photos');
+  }
+
+  getAlbums() {
+    return this.http.get('https://jsonplaceholder.typicode.com/albums');
+  }
+
+loadDashboard() {
+
+  // Show spinner
+  this.spinner.showSpinner();
+  // we use forkjoin() here
+  forkJoin({
+    users: this.getAllUsers(),
+    comments: this.getAllComments(),
+    photos: this.getAllPhotos(),
+    albums: this.getAlbums()
+  }).subscribe({
+
+    next: (result: any) => {
+
+      this.users = result.users;
+      this.comments = result.comments;
+      this.photos = result.photos;
+      this.albums = result.albums;
+
+      this.userCount = this.users.length;
+      this.commentCount = this.comments.length;
+      this.photoCount = this.photos.length;
+      this.albumCount = this.albums.length;
+
+      this.loading.set(false); // loader stop here bydefault it is true
+
+      // Success toast
+      this.toastService.showSuccess('Dashboard loaded successfully');
+
+      console.log('All APIs completed.');
+    },
+
+    error: (error) => {
+
+      console.error('Error loading dashboard:', error);
+
+      this.loading.set(false);
+
+      // Error toast
+      this.toastService.showError('Failed to load dashboard');
+    },
+
+    complete: () => {
+
+      console.log('Dashboard loading process completed.');
+
+      // Call another API if needed
+      // this.getEmployeeCount();
+      // this.loadRoles();
+    }
+
+  })
+  .add(() => {
+    // Always executes (success or error)
+    this.spinner.hideSpinner();
+  });
+
+}
+
+
+
+
+| Feature              | Description                            |
+| -------------------- | -------------------------------------- |
+| **Waits for ALL**    | Waits until every Observable completes |
+| **Emits ONCE**       | Emits combined result as an array      |
+| **Order preserved**  | Results in same order as input array   |
+| **Fails fast**       | If ANY fails, entire forkJoin fails    |
+| **Last values only** | Takes only last emission from each     |
 
 -------------------------------------------------------------------------------------------------------------------------------
 here we new few things 
@@ -8509,11 +8615,374 @@ ngOninit()
 1> map() - transform existing array with condition make new array.
 
 	const rollList = [2,4,5,6,7,9];
-	const findSqaureEle = rollList.map(a=>a*2); 	
-					
+	const findSqaureEle = rollList.map(a=>a*2); 
+
+Questions >difference in flatmap ad map in our object we discuss ?	
+Let's use your IntentionWall object structure again and make the difference very clear.
+
+Suppose your API gives us 2 zones:
+
+const zones = [
+  {
+    ZoneName: 'Russia and Ukraine',
+    ZoneCountryList: [
+      {
+        CountryName: 'Russia',
+        Latitude: 61.5,
+        Longitude: 105.3
+      },
+      {
+        CountryName: 'Ukraine',
+        Latitude: 48.3,
+        Longitude: 31.1
+      }
+    ]
+  },
+  {
+    ZoneName: 'Central Europe',
+    ZoneCountryList: [
+      {
+        CountryName: 'Germany',
+        Latitude: 51.1,
+        Longitude: 10.4
+      },
+      {
+        CountryName: 'France',
+        Latitude: 46.2,
+        Longitude: 2.2
+      }
+    ]
+  }
+];
+
+So visually our input is:
+
+zones
+│
+├── Zone 1: Russia and Ukraine
+│     ├── Russia
+│     └── Ukraine
+│
+└── Zone 2: Central Europe
+      ├── Germany
+      └── France
+	  
+	  
+1. Using map()
+
+If we do:
+// here zone having array object
+
+const result = zones.map(zone => {
+  return zone.ZoneCountryList.map(country => {
+    return {
+      name: zone.ZoneName,
+      country: country.CountryName
+    };
+  });
+});
+The inner map() creates objects for each country.
+
+For Zone 1:
+
+Russia   → { name: "Russia and Ukraine", country: "Russia" }
+Ukraine  → { name: "Russia and Ukraine", country: "Ukraine" }
+
+
+For Zone 2:
+
+Germany → { name: "Central Europe", country: "Germany" }
+France  → { name: "Central Europe", country: "France" }
+
+But the outer map() returns one result for each zone.
+
+Therefore the final result is:
+
+[
+  [
+    {
+      name: 'Russia and Ukraine',
+      country: 'Russia'
+    },
+    {
+      name: 'Russia and Ukraine',
+      country: 'Ukraine'
+    }
+  ],
+
+  [
+    {
+      name: 'Central Europe',
+      country: 'Germany'
+    },
+    {
+      name: 'Central Europe',
+      country: 'France'
+    }
+  ]
+]
+
+
+Notice this carefully:
+
+Array
+ ├── Array
+ │    ├── Russia object
+ │    └── Ukraine object
+ │
+ └── Array
+      ├── Germany object
+      └── France object
+	  
+	  ---------------------------
+	  
+2. Using flatMap()
+
+Now your code:
+
+const walls = zones.flatMap(zone => {
+  return zone.ZoneCountryList.map(country => {
+    return {
+      name: zone.ZoneName,
+      country: country.CountryName
+    };
+  });
+});
+
+
+The inner map() still does exactly the same thing.
+
+
+For Zone 1:
+
+[
+  {
+    name: 'Russia and Ukraine',
+    country: 'Russia'
+  },
+  {
+    name: 'Russia and Ukraine',
+    country: 'Ukraine'
+  }
+]
+
+
+
+For Zone 2:
+
+[
+  {
+    name: 'Central Europe',
+    country: 'Germany'
+  },
+  {
+    name: 'Central Europe',
+    country: 'France'
+  }
+]
+
+
+But now flatMap() flattens those arrays by one level.
+
+Final result:
+
+
+[
+  {
+    name: 'Russia and Ukraine',
+    country: 'Russia'
+  },
+  {
+    name: 'Russia and Ukraine',
+    country: 'Ukraine'
+  },
+  {
+    name: 'Central Europe',
+    country: 'Germany'
+  },
+  {
+    name: 'Central Europe',
+    country: 'France'
+  }
+]
+
+
+3. Think about it visually
+
+map()
+
+zones.map()
+      ↓
+
+[
+   [ Russia, Ukraine ],
+   [ Germany, France ]
+]
+
+flatMap()
+
+zones.flatMap()
+      ↓
+
+[
+   Russia,
+   Ukraine,
+   Germany,
+   France
+]
+
+
+4. Now your actual Wall object
+
+Your actual code is:
+
+
+const walls: Wall[] = zones.flatMap((zone: ZoneApiResponse) => {
+  return (zone.ZoneCountryList ?? []).map(country => {
+    return {
+      name: zone.ZoneName,
+      label: zone.ZoneName,
+      countries: [country.CountryName],
+      labelLat: country.Latitude,
+      labelLng: country.Longitude,
+      highlightColor: '#4da8ff',
+      traditions: this.DEFAULT_TRADITIONS,
+      description: zone.Description
+    };
+  });
+});
+
+
+The easiest way to remember
+
+For your code:
+
+map()
+
+"Take this country and create a Wall object."
+
+Russia → Wall Russia
+Ukraine → Wall Ukraine
+Germany → Wall Germany
+France → Wall France
+
+
+
+flatMap()
+
+"Take all those Wall arrays and make one single Wall array."
+
+[ [Wall Russia, Wall Ukraine],
+  [Wall Germany, Wall France] ]
+
+              ↓ flatMap
+
+[ Wall Russia,
+  Wall Ukraine,
+  Wall Germany,
+  Wall France ]
+  
+  
+  
+So in your IntentionWall code:
+
+map() = transformation
+
+flatMap() = transformation + flatten one level
+
+Example 2> map
+
+If your API gives:
+{
+  ZoneTradition: "Test1, Test2"
+}
+and you want in array like 
+
+["Test1", "Test2"]
+then we can use map() here 
+
+you could do:
+
+traditions: zone.ZoneTradition
+  .split(',')
+  .map(item => item.trim()),
+  
+  
+  
+Example 3> if your output get 
+
+If your API gives:
+{
+  ZoneTradition: "Test1, Test2"
+}
+
+Expected here
+[
+  {
+    id: "test1",
+    label: "Test1"
+  },
+  {
+    id: "test2",
+    label: "Test2"
+  }
+]
+
+if you check here we need to add one more properties id with value of same data with tolowercase() liek 
+{
+    id: "test1",
+    label: "Test1"
+}
+
+so here we can use map() here 
+
+traditions: zone.ZoneTradition
+  .split(',')
+  .map(item => item.trim()) // remove extra space in between
+  .map(item => ({
+    id: item.toLowerCase().replace(/\s+/g, '-'), // assign value with lowercase
+    label: item
+  })),
+
+so 
+
+"Test1, Test2"
+       ↓ split(',')
+["Test1", " Test2"]
+       ↓ trim()
+["Test1", "Test2"]
+       ↓ map()
+[
+  { id: "test1", label: "Test1" },
+  { id: "test2", label: "Test2" }
+]
+	
+	
 					
 1: Filter 
   - if element present it will send array where this eplement present if not then it send empty array . 
+  
+  Ex:
+  
+  If ZoneTradition is empty, you don't want this:
+  
+  traditions: [
+  { id: '', label: '' }
+]
+
+You should filter empty values before creating the objects.
+
+Use:
+
+traditions: (zone.ZoneTradition ?? '')
+  .split(',')
+  .map(item => item.trim())
+  .filter(item => item.length > 0) // CHANGED: remove empty traditions
+  .map(item => ({
+    id: item.toLowerCase().replace(/\s+/g, '-'),
+    label: item
+  })),
+  
   
  Ex  = 
  
@@ -8563,6 +9032,75 @@ ngOninit()
  
  - if element not found we get empty array in filter()							- if element not found we get undefined in find()
  
+ 
+ Example : we have array
+ {
+    "StatusCode": 200,
+    "Success": true,
+    "Message": "OK",
+    "Data": [
+        {
+            "Id": "054a9961-aac0-11f1-9300-00ff9d1ce3bf",
+            "Key": "SiteTitle",
+            "Value": "IntentionWall",
+            "CreatedAt": "2026-09-07T18:58:32",
+            "UpdatedAt": "2026-09-07T18:58:32"
+        },
+        {
+            "Id": "054aea05-aac0-11f1-9300-00ff9d1ce3bf",
+            "Key": "AllowAnonymousSubmissions",
+            "Value": "true",
+            "CreatedAt": "2026-09-07T18:58:32",
+            "UpdatedAt": "2026-09-07T18:58:32"
+        },
+        {
+            "Id": "07d62ea8-5bc1-40f8-881a-7d70b090bcdc",
+            "Key": "pageSize",
+            "Value": "20",
+            "CreatedAt": "2026-10-01T14:27:07",
+            "UpdatedAt": "2026-10-02T13:00:01"
+        },
+        {
+            "Id": "12f8440b-6d43-42de-a14d-4f67a37afb44",
+            "Key": "pageNumber",
+            "Value": "1",
+            "CreatedAt": "2026-10-01T14:29:36",
+            "UpdatedAt": "2026-10-01T14:29:36"
+        },
+        {
+            "Id": "66543b35-d04b-4973-a701-f1195b2405a8",
+            "Key": "pollingIntervalMinutes",
+            "Value": "2",
+            "CreatedAt": "2026-10-02T05:56:57",
+            "UpdatedAt": "2026-10-02T13:00:01"
+        },
+        {
+            "Id": "75d68e44-728f-41b4-b7a0-3b154ea9d26f",
+            "Key": "cardMoveDurationSeconds",
+            "Value": "5",
+            "CreatedAt": "2026-09-16T10:44:31",
+            "UpdatedAt": "2026-10-02T13:00:01"
+        },
+        {
+            "Id": "ce5064ea-268f-4841-8e80-93babf02c6d9",
+            "Key": "backendPageSize",
+            "Value": "101",
+            "CreatedAt": "2026-10-01T14:50:26",
+            "UpdatedAt": "2026-10-02T13:24:17"
+        }
+    ]
+}
+here we nned to extract value of key backendPageSize
+
+consider we store value in localstorage
+
+Solution : 
+
+    get backendSize(): number {
+        const setting = localStorage.getItem(this.storagekey);
+        const value = setting??setting.find(a => a.Key === 'backendPageSize')?.Value:100;
+    }
+// in above first we find key then got value
  
  
  3: includes  - check element is present or not  it will work on Array of element
@@ -12413,21 +12951,33 @@ Programme :
 second highest value of an array ?
 Hint first find hishest and second highest value then check highest value is not equal to second highest
 
-int highest = int.minValue;
-int second = int.minValue;
-for(int i=0;i<n;i++)
+using System;
+
+public class Program
 {
-	if(arr[i]>highest)
-	{
-		highest = arr[i];
-		second = highest;
-	}
-	else(arr[i]>second && highest != second)
-	{
-		second = arr[i];
-	}
+    public static void Main()
+    {
+        int[] nums = { 5, 10, 8, 10, 2, 1, 15, 15 };
+
+        int max = 0;
+        int secondMax = 0;
+
+        for (int i = 0; i < nums.Length; i++)
+        {
+            if (nums[i] > max)
+            {
+                secondMax = max;     // assign first old value
+                max = nums[i];		 // assign new value 
+            }
+            else if (nums[i] > secondMax && nums[i] != max)
+            {
+                secondMax = nums[i];
+            }
+        }
+
+        Console.Write($"{secondMax} is second highest element");
+    }
 }
-return second;
 
 ------------------------------------------------
 bubble sort
@@ -12610,3 +13160,617 @@ Hindi message         → invalid
 Arabic message        → invalid
 Empty message         → ignored by this validator
 Short/ambiguous text  → decide expected behavior
+
+--------------------------------------------------------------------------------
+
+												Angular best prctice
+												-------------------------
+		
+export const rootNavigationRoutes = Object.freeze({
+    addPost: 'add-post',
+    displayFeed: 'display-feed',
+    leafletMap: 'leaflet-map',
+    dashboard: 'dashboard',
+});
+
+export const navigationRoutes = Object.freeze({
+    addPost: `/${rootNavigationRoutes.addPost}`,
+    displayFeed: `/${rootNavigationRoutes.displayFeed}`,
+    leafletMap: `/${rootNavigationRoutes.leafletMap}`,
+    dashboard: `/${rootNavigationRoutes.dashboard}`,
+});
+
+
+app.routes.ts
+--------------------
+import { Routes } from '@angular/router';
+import { rootNavigationRoutes } from './core/constants/navigation-routes';
+
+export const routes: Routes = [
+  {
+    path: '',
+    redirectTo: rootNavigationRoutes.addPost,
+    pathMatch: 'full'
+  },
+
+  {
+    path: rootNavigationRoutes.addPost,
+    loadComponent: () =>
+      import('./core/components/add-post/add-post')
+        .then(a => a.AddPost)
+  },
+
+  {
+    path: rootNavigationRoutes.displayFeed,
+    loadComponent: () =>
+      import('./core/components/display-feed/display-feed')
+        .then(a => a.DisplayFeed)
+  },
+
+  {
+    path: rootNavigationRoutes.leafletMap,
+    loadComponent: () =>
+      import('./features/components/leaflet-map/leaflet-map')
+        .then(a => a.LeafletMap)
+  },
+
+  {
+    path: rootNavigationRoutes.dashboard,
+    loadComponent: () =>
+      import('./core/components/dashboard/dashboard')
+        .then(a => a.Dashboard)
+  }
+];
+
+
+3. Then navigation becomes cleaner
+
+Suppose from your Add Post component you want to go to Dashboard.
+
+Inject Router:
+
+import { Router } from '@angular/router';
+
+private readonly router = inject(Router);
+
+Then:
+
+this.router.navigateByUrl(navigationRoutes.dashboard);
+
+Instead of:
+
+this.router.navigateByUrl('/dashboard');
+
+
+----------------------------------------------------------
+Http interceptor code
+
+import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
+import { navigationRoutes } from './constants/navigation-routes.constants';
+import { LoaderService } from './services/common/loader.service';
+import { ToastService } from './services/common/toast.service';
+
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  private totalRequests = 0;
+  constructor(private loadingService: LoaderService,
+    private router: Router, private toastrService: ToastService) { }
+
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const url = req.url;
+    this.totalRequests++;
+    this.loadingService.setLoading(true);
+    let headers =new HttpHeaders();
+    const targetedUrls = ['automated-save-user'];
+    let request;
+
+    if (!targetedUrls.some(targetedUrl => url.includes(targetedUrl))) {
+      headers = headers.append('Content-Type', 'application/json');
+
+    }
+    // headers = headers.append('Content-Type', 'application/json');
+
+    request = req.clone({ headers: headers });
+
+    return next.handle(request).pipe(
+      catchError((error: any) => {
+        if (error instanceof HttpErrorResponse) {
+          if (error.status == 401) {
+            this.router.navigate([navigationRoutes.login]);
+          }
+          else if ((error.status == 429)) {
+            this.toastrService.showError(error.error, "Error");
+          }
+          else if (error.status == 403) {
+            this.toastrService.showError(error.error, "Error");
+            this.router.navigate([navigationRoutes.error]);
+          }
+          else {
+            this.toastrService.showError("Something went wrong", "Error");
+          }
+        }
+        return throwError(error);
+      }),
+      finalize(() => {
+        setTimeout(() => {
+          if (--this.totalRequests === 0) {
+            this.loadingService.setLoading(false);
+          }
+        }, 250);
+      })
+    );
+  }
+}
+--------------------
+
+Angular reactive forms validation code reusabel instead of writing validation logic again and again we create function here
+
+
+form-utils.ts
+
+import { FormGroup } from '@angular/forms';
+
+export function hasValidationErrors(form: FormGroup, controlName: string, errorName?: string): boolean {
+    const control = form.controls[controlName];
+    if (!control || !(control?.touched || control?.dirty)) {
+        return false;
+    }
+    if (errorName) {
+        return control.hasError(errorName);
+    }
+    return control.invalid;
+}
+how we use in component
+
+ts file
+-----------
+
+ addForm = this.fb.nonNullable.group({
+    displayName: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+    country: ['', Validators.required],
+    conflictZone: ['', Validators.required],
+    message: ['', [Validators.required, Validators.minLength(3), englishOnlyValidators()]],
+    consent: [false, Validators.requiredTrue]
+  })
+
+  hasAddPostFormErrors(controlName: string, errorName?: string): boolean {
+    return hasValidationErrors(this.addForm, controlName, errorName); // called function here
+  }
+  
+  
+  in html file
+  
+    <form [formGroup]="addForm" (ngSubmit)="onSubmit()">
+        <!-- Display Name -->
+        <div class="mb-3">
+            <label class="form-label">Display Name</label>
+            <input type="text" class="form-control" formControlName="displayName" placeholder="Enter Display name">
+
+            @if (hasAddPostFormErrors('displayName'))
+            {
+            <div class="text-danger">
+                Display Name is Required
+            </div>
+            }
+        </div>
+        <!-- Email -->
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="text" class="form-control" formControlName="email" placeholder="Enter your email">
+            @if(addForm.controls.email.valid && !emailVerified())
+            {
+            <button type="button" class="btn btn-primary mt-2"
+                (click)="SendEmailOtp({email:addForm.controls.email.value})">Verify Email</button>
+            }
+
+            @if (hasAddPostFormErrors('email','required'))
+            {
+            <div class="text-danger">
+                Email is required.
+            </div>
+            }
+            @else if(hasAddPostFormErrors('email','email'))
+            {
+            <div class="text-danger">
+                Please enter a valid email address.
+            </div>
+            }
+
+        </div>
+	</form>
+	
+	--------------------------------------------------------
+	
+	in each and every api called we need to start loader then after api complete then we need to stop loader 
+	if api succesd then we need to called tostr for sucess if failed then called failed tostr with warningso this code is reusabel for that we have created a service contain two method
+	method 1 > for each api called we called this method
+	method 2> when we called multiple api same time 
+	
+	below is my service
+	
+	import { inject, Service } from '@angular/core';
+import { Spinnerservice } from './spinnerservice';
+import { Toastservice } from './toastservice';
+import { catchError, finalize, forkJoin, Observable, tap, throwError } from 'rxjs';
+
+@Service()
+export class ApiHandlerService {
+    private spinner = inject(Spinnerservice);
+    private toastService = inject(Toastservice);
+	
+    execute<T>(options: {
+        apiCall: () => Observable<T>;
+        successMessage?: string;
+        errorMessage?: string;
+        showSpinner?: boolean;
+    }): Observable<T> {
+
+        // Show spinner unless explicitly disabled
+        if (options.showSpinner !== false) {
+            this.spinner.showSpinner();
+        }
+
+        return options.apiCall()
+            .pipe(
+
+                // Success handling
+                tap(() => {
+                    if (options.successMessage) {
+                        this.toastService.showSuccess(
+                            options.successMessage
+                        );
+                    }
+                }),
+
+                // Error handling
+                catchError((error: unknown) => {
+
+                    this.toastService.showError(
+                        options.errorMessage ?? 'Something went wrong'
+                    );
+
+                    // Important: send the error back to the component
+                    return throwError(() => error);
+                }),
+
+                // Always hide spinner
+                finalize(() => {
+                    if (options.showSpinner !== false) {
+                        this.spinner.hideSpinner();
+                    }
+                })
+            );
+    }
+
+    executeAll<T extends Record<string, Observable<any>>>(
+        apiCalls: T,
+        options?: {
+            successMessage?: string;
+            errorMessage?: string;
+            showSpinner?: boolean;
+        }
+    ): Observable<T> {
+
+        if (options?.showSpinner !== false) {
+            this.spinner.showSpinner();
+        }
+
+        return forkJoin(apiCalls).pipe(
+
+            tap(() => {
+                if (options?.successMessage) {
+                    this.toastService.showSuccess(
+                        options.successMessage
+                    );
+                }
+            }),
+
+            catchError((error: unknown) => {
+                this.toastService.showError(
+                    options?.errorMessage ?? 'Something went wrong'
+                );
+
+                return throwError(() => error);
+            }),
+
+            finalize(() => {
+                if (options?.showSpinner !== false) {
+                    this.spinner.hideSpinner();
+                }
+            })
+        );
+    }
+
+}
+
+
+ts file: where we consume this service here
+
+private readonly apiHandler = inject(ApiHandlerService); // inject service in component
+
+SendEmailOtp(request: SendEmailOtpRequest) {
+ 
+    this.apiHandler.execute({
+      apiCall: () => this.postservice.sendOtp(request),
+      successMessage: 'Verification code sent successfully.',
+      errorMessage: 'Failed to send verification code.'
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        if (res) {
+          this.otpSent.set(true);
+          console.log('Response Coming from sendotp api', res);
+        }
+      },
+      error: (err: string) => {
+        console.error(err);
+      },
+      complete: () => {
+        console.log('Send Otp Api Sucess !');
+      }
+    })
+  }
+  
+  
+  called multiple api here
+  ----------------------------
+   private readonly destroyRef = inject(DestroyRef);
+  private readonly apiHandler = inject(ApiHandlerService);
+  private readonly postService = inject(Post);
+
+  ngOnInit(): void {
+    this.loadDashboard();
+  }
+
+       private loadDashboard(): void {
+
+  //   this.apiHandler.executeAll(
+  //     {
+  //       posts: this.postService.getPosts(),
+  //       countries: this.postService.getCountries(),
+  //       zones: this.postService.getZones(),
+  //     },
+  //     {
+  //       errorMessage: 'Failed to load dashboard data.',
+  //       showSpinner: true
+  //     }
+  //   )
+  //     .pipe(
+  //       takeUntilDestroyed(this.destroyRef)
+  //     )
+  //     .subscribe({
+  //       next: (result) => {
+
+  //         console.log('Posts:', result.posts);
+  //         console.log('Countries:', result.countries);
+  //         console.log('Zones:', result.zones);
+
+  //       },
+
+  //       error: (error) => {
+  //         console.error('Dashboard API error:', error);
+  //       }
+  //     });
+  // }
+  
+  -------------------------------------------------------
+  
+  prime ng show invalid liecence ui button to resolve this we need to 
+  https://primeui.store/primeui
+  choose community apply we need to create new liecence here we get api key use it consume in ts file
+  
+  
+  prime-license.ts
+  
+  import { registerLicense } from '@primeui/license-manager';
+
+registerLicense({
+    primeui: 'eyJpZCI6ImU2MWUyODcyLTZlZGQtNDY3My05ODU3LWY3YjhmNjdlZGE2OSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODgzNDYyNTUsImV4cCI6MTgxOTg4MjI1NX0.SJvYBoAMNZTCotFuKZW8yO8YHqThjLIS7t4-vXAgMabnQKWhfiuSdJ0Km9txVgS1HBTqWrOE3SFhtMUk294uAw'
+});
+
+then just need to give path to main.ts
+
+import './app/features/Validators/prime-license'; // path is given here
+
+bootstrapApplication(App, appConfig)
+  .catch((err) => console.error(err));
+-----------------------------------------------------------------------------------------
+when we choose services and when we choose localstorage in angular ?
+
+
+1. Shared service/store — data sharing during the current app session
+
+A shared Angular service is suitable when:
+
+Component A and Component B need the same data.
+
+Both components are inside the same Angular application.
+
+You want reactive updates.
+
+You do not necessarily need the data after browser refresh.
+
+You want to avoid calling the same API repeatedly.
+
+Example:
+
+readonly zoneList = signal<Zone[]>([]);
+
+Both components read the same in-memory signal:
+
+this.zoneStore.zoneList()
+
+When the API response arrives:
+
+this.zoneStore.zoneList.set(res.Data);
+
+Both components automatically receive the updated data.
+
+-------------------------------------------------------------------------------------------------------------
+
+2. localStorage — data persistence in the browser
+
+localStorage is useful when you want the zone data to remain available after:
+
+Browser refresh.
+
+Component destruction and recreation.
+
+Navigating away and returning.
+
+Closing and reopening the browser, until storage is cleared.
+
+Example:
+
+localStorage.setItem('zoneList', JSON.stringify(res.Data));
+
+Then later:
+
+const storedZones = localStorage.getItem('zoneList');
+
+if (storedZones) {
+  this.zoneList.set(JSON.parse(storedZones));
+}
+
+But localStorage is not automatically reactive. If Component A updates localStorage, Component B will not automatically update its UI just because the storage value changed. You still need a shared signal/service or a storage event mechanism.
+
+
+------------------------------------------------------------------------------------------
+
+									***	Git  ***
+									------------
+									------------
+									
+									
+before push your code in git 
+
+in visual studio code
+if branch name is feature/admin
+1> first stage your current code and "commit message" your code and push  or you can choose "commit and push"
+2> click sync
+3> take pull from from developer or master
+4> create Merge request by assign someone and reviewd
+
+-------------------------------------------------------
+
+in visual studio
+
+if branch name is feature/admin
+1> first stage your current code and "commit message" your code and push  or you can choose "commit and push"
+2> click sync
+3> then in bottonm where you see "feature/admin" click it you see "new branch" button dont click it right side you have hamburger icon like ...
+    click it you see "Manage Branch" click it
+4> you see all branches "feature/admin" and "develope" or "Master"
+5> now before merge to "develope" or "master" click to this branch
+6> here i click "develope" branch then right click again to "develope" you see below option
+	"Merge 'develope' into 'feature/admin'" click it  
+	if no conflic then merge it yes then resolve merge conflictZone
+7> then currrent branch is 'feature/admin'"
+  Note : sometimes latest code of develope not present in develope so while merge into your branch may not get latest code so
+  7.1> checkout to your current branch to 'develope'
+  7.2> take latest fetch and pull in 'develope' branch
+  7.3> then come to our branch i.e "feature/admin" no again 
+         follow step 3 again for get letest code merge develope to "feature/admin"
+		 -------------
+		 -------------
+	
+-----------------------------------
+
+var query =
+ from m in _db.Messages.AsNoTracking()
+ join z in _db.Zones.AsNoTracking()
+     on m.ZoneId equals z.Id
+ join c in _db.countries.AsNoTracking()
+     on m.CountryId equals c.Id
+ join t in _db.Traditions.AsNoTracking()
+     on m.TraditionId equals t.Id
+
+ select new
+ {
+     Message = m,
+     ZoneName = z.Name,
+     CountryName = c.CountryName,
+     TraditionName = t.TraditionName
+ };
+
+
+ above linq can convert into sql using following method .
+var sql = query.ToQueryString();
+
+------------------------------------------
+signal doesnt support "two way binding"
+
+
+
+Ex: 
+	ts
+	selectZoneId = signal<number | null>(null);
+	
+	html code
+
+  <p-select [options]="zoneList()" optionLabel="Name" [(ngModel)]="selectZoneId()"  // we get error
+            optionValue="Id" placeholder="Select Zone" [showClear]="false" class="filter-dropdown"
+            (onChange)="onZoneChange($event)">
+   </p-select>
+
+----------------------------------------------------
+
+how to create request an dpassed to parameter in angular ?
+- 
+conside api expect below body  for post api 
+
+{
+  "name": "erussia",
+  "description": "we dont want war here",
+  "isActive": true,
+  "countries": [
+    {
+      "countryId": "country-id-1"
+    },
+    {
+      "countryId": "country-id-2"
+    }
+  ]
+}
+
+step 1> create API Request Model 
+
+export interface CreateZoneRequest {
+    name: string;
+    description: string;
+    isActive: boolean;
+    countries: {
+        countryId: string;
+    }[];
+}
+
+
+step 2> while submite form create request here
+
+submitZone(): void {
+
+    this.addzoneForm.markAllAsTouched();
+
+    if (this.addzoneForm.invalid) {
+        return;
+    }
+
+    const formValue = this.addzoneForm.getRawValue();
+
+    const request: CreateZoneRequest = {
+        name: formValue.zonename,
+        description: formValue.description,
+        isActive: true,
+        // CHANGED: convert string[] to { countryId: string }[] using map we convert or modify array into appropriate array with label 
+        countries: formValue.countries.map(countryId => ({
+            countryId: countryId
+        }))
+    };
+
+    console.log('Create Zone Request:', request);
+
+    // API call here
+}
