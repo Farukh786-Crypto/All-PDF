@@ -133,9 +133,10 @@ Lazy loading describes when Angular loads it.
 
 That's the distinction.
 
---------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
 
 												** Lazy Loading in Angular  **
+												------------------------------
 												
 How do you implement lazy loading in Angular?
 - Lazy loading means loading a feature only when the user navigates to it instead of including it in the initial application bundle. In the traditional NgModule architecture.
@@ -242,10 +243,7 @@ This is the important part for lazy loading.
 
 const routes: Routes = [
   {
-    path: 'employee',
-    loadChildren: () =>
-      import('./employee/employee.module')
-        .then(m => m.EmployeeModule)
+    path: 'employee',loadChildren: () =>import('./employee/employee.module').then(m => m.EmployeeModule)
   }
 ];
 
@@ -290,12 +288,10 @@ Employees
 Angular navigates to:
 
 /employee
-m
+
 Router sees:
 
-loadChildren: () =>
-    import('./employee/employee.module')
-        .then(m => m.EmployeeModule)
+loadChildren: () =>import('./employee/employee.module').then(m => m.EmployeeModule)
 
 Then:
 
@@ -312,7 +308,9 @@ EmployeeComponent
 That's lazy loading.
 
 
-		** standalone component lazy load **
+							** standalone component lazy load **
+							------------------------------------
+							
 		
 6. Now standalone Angular
 
@@ -320,18 +318,13 @@ Modern Angular doesn't require an NgModule for this.
 
 Instead of:
 
-loadChildren: () =>
-  import('./employee/employee.module')
-    .then(m => m.EmployeeModule)
+loadChildren: () =>import('./employee/employee.module').then(m => m.EmployeeModule)
 
 you can lazy-load the component directly:
 
 const routes: Routes = [
   {
-    path: 'employee',
-    loadComponent: () =>
-      import('./employee/employee.component')
-        .then(c => c.EmployeeComponent)
+    path: 'employee',loadComponent: () =>import('./employee/employee.component').then(c => c.EmployeeComponent)
   }
 ];
 
@@ -363,10 +356,7 @@ Then routing:
 
 const routes: Routes = [
   {
-    path: 'employee',
-    loadComponent: () =>
-      import('./employee/employee.component')
-        .then(c => c.EmployeeComponent)
+    path: 'employee',loadComponent: () =>import('./employee/employee.component').then(c => c.EmployeeComponent)
   }
 ];
 
@@ -391,8 +381,8 @@ The difference you should remember
 
 
 --------------------------------------------------------------------------------------------------------------------
-														**	Angular Flow **
-														--------------------
+											**	Angular Flow **
+											--------------------
 														
 Angular application flow in the traditional NgModule architecture, start with index.html.
 
@@ -452,8 +442,7 @@ The browser initially loads:
 This is the entry point.
 Typical modern Angular:
 
-bootstrapApplication(AppComponent, appConfig)
-  .catch(err => console.error(err));
+bootstrapApplication(AppComponent, appConfig).catch(err => console.error(err));
   
  Here Angular is told:
 
@@ -1067,8 +1056,7 @@ public class EmployeesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetEmployee(int id)
     {
-        var employee =
-            await _employeeService.GetEmployeeIdAsync(id);
+        var employee = await _employeeService.GetEmployeeIdAsync(id);
         return Ok(employee);
     }
 }
@@ -1093,8 +1081,7 @@ public async Task<EmployeeDTO?> GetEmployeeIdAsync(int id)
         throw new ArgumentException(
             "Employee ID must be greater than zero.");
     }
-    var employee =
-        await _employeeRepositories.GetEmployeeByIdAsync(id);
+    var employee = await _employeeRepositories.GetEmployeeByIdAsync(id);
     return employee;
 }
 
@@ -1110,8 +1097,7 @@ Step 10 — Repository
 
 Then:
 
-var employee =
-    await _employeeRepositories.GetEmployeeByIdAsync(id);
+var employee = await _employeeRepositories.GetEmployeeByIdAsync(id);
 
 Repository accesses the database:
 
@@ -1125,9 +1111,7 @@ SQL Server
 
 For example:
 
-var employee = await _databaseContext.employees
-    .AsNoTracking()
-    .FirstOrDefaultAsync(x => x.empId == id);
+var employee = await _databaseContext.employees.AsNoTracking().FirstOrDefaultAsync(x => x.empId == id);
 	
 	
 Step 11 — SQL Server
@@ -1157,15 +1141,71 @@ IIS
 Angular
 
 
---------------------------------------------------------------------------------------------------------------------------------
-
-Assignment : need to do usermanagement ui then add project tracking code find employe list from date to to date
-
--------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 In angular Two Way binding achieve by using [(ngModel)] in import[FormsModule] in component .
 
-Ex: if we have select dropdown now you when you select option \you want to pass to ts using ([ngModel]) when (change)=onCountryChange()
+1. Using [(ngModel)] — Template-driven forms
+
+Ex: if we have select dropdown now you when you select option you want to pass to ts using ([ngModel]) when (change)=onCountryChange()
 that time we store in ts and clear it also
+
+Example :
+<select [(ngModel)]="selectedCountry" (change)="onCountryChange()">
+  <option value="">Select Country</option>
+  <option value="India">India</option>
+  <option value="USA">USA</option>
+</select>
+
+<button (click)="clearCountry()">Clear</button>
+
+
+ts code
+-------------
+import { FormsModule } from '@angular/forms';
+
+selectedCountry = '';
+
+onCountryChange() {
+  console.log(this.selectedCountry);
+}
+
+clearCountry() {
+  this.selectedCountry = '';
+}
+
+
+2. Using FormControl — Reactive forms
+You can achieve the same functionality using ReactiveFormsModule.
+
+html
+----
+<select [formControl]="countryControl">
+  <option value="">Select Country</option>
+  <option value="India">India</option>
+  <option value="USA">USA</option>
+</select>
+
+<button (click)="clearCountry()">Clear</button>
+
+
+ts code
+
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+
+countryControl = new FormControl('');
+
+constructor() {
+  this.countryControl.valueChanges.subscribe(value => {
+    console.log(value);
+  });
+}
+
+clearCountry() {
+  this.countryControl.setValue('');
+}
+
+
+Here, valueChanges automatically detects when the user selects a different country. You don't need (change)="onCountryChange()" for this behavior.
 ----------------------------------------------------------------------------------------------
 
 Middeware = handle request and response
@@ -1200,18 +1240,18 @@ different types of DI in asp.net core web api
 
 builder.services.AddScope();  per request object instance is created ex like dbcontext ,  Repository
 
-
-public IActioncontroller HomeControe(customer obj1 , customer obj2) 
+public IActioncontroller HomeController(customer obj1 , customer obj2) 
 
 builder.services.AddTranscient<>();    every you inject object instance is created  Ex sms or email
 
 builder.Services.AddSingleton<>();   only one object instance create for whole application Ex like configuration , caching
 
------------------------------------------------------------------------------------------------------------------------------------------
-															***	JWT (Json Web Token) ***
+------------------------------------------------------------------------------------------------------------------------
+									***	JWT (Json Web Token) ***
+										-----------------
 
 1. Client sends credentials to the server. i.e pass username and password 
-2. Server respons backs with a token .
+2. Server respons backs with a token.
 3. Later access the resources only this token is needed.
 
 
@@ -1244,7 +1284,7 @@ Encoding is not encryption
 
 steps to create JWT Token ?
 1> Import the  "Microsoft.AspNetCore.Authentication.JwtBearer" JWT Package.
-2> create three sections of the token.
+2> create three sections of the token. i.e(Header , payload ,signature)
 3> Add the Bearer Check in the pipeline.
 4> Apply the [Authorize] attributes to controller which need  to be protected .
 
@@ -1261,10 +1301,10 @@ steps to create JWT Token ?
 	Invalid JWT token
 	Wrong username/password during login
 
-* Http 403 when use dont have rights
+* Http 403 when user dont have rights
  - The user is authenticated, but does not have permission to access the resource.
 
-* Token is checked in the middleware by Jwtbearer Class .
+* Token is checked in the middleware by Jwtbearer Class.
 * JWT Token authentication is only applied to controller who have authorized Attribute decorated . i.e [Authorize]
 
 * [Allowanonymous] attribute is used when doesnt need to check authorization
@@ -1359,17 +1399,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 When using HttpOnly cookies, the interceptor does not add an Authorization header.
 Instead, it ensures cookies are included with requests:
 
-import {
-  HttpInterceptorFn
-} from '@angular/common/http';
+import {HttpInterceptorFn} from '@angular/common/http';
 
-export const authInterceptor: HttpInterceptorFn =
-(req, next) => {
-
+export const authInterceptor: HttpInterceptorFn =(req, next) => {
   const authReq = req.clone({
       withCredentials: true
   });
-
   return next(authReq);
 };
 
@@ -1453,7 +1488,8 @@ Even typing /login manually redirects to the dashboard.
 Question: Access Token vs Refresh Token ?
 - Access Token (JWT Token) are token which helps you to access a secure resource while refresh token helps you to get new Token.
 
-															** Refresh Token  **
+											** Refresh Token  **
+											--------------------
 															
 - Refresh Token is a separate token by which you can get  a new token
 
@@ -1503,27 +1539,18 @@ refreshToken() {
 }
 
 Interceptor
-
+----------
 
 return next(authReq).pipe(
-
    catchError((error)=>{
-      if(error.status===401){
+      if(error.status===401){				// when unauthorised user then called refresh token service
           return authService.refreshToken().pipe(
              switchMap((response)=>{
-                localStorage.setItem(
-                    'token',
-                    response.accessToken
-                );
+                localStorage.setItem('token',response.accessToken);
                 const retryRequest =
                     req.clone({
-                     setHeaders:{
-                        Authorization:
-                        `Bearer ${response.accessToken}`
-                     }
-                    });
-                return next(retryRequest);
-             })
+                     setHeaders:{Authorization:`Bearer ${response.accessToken}`});
+					return next(retryRequest);})
           );
       }
       return throwError(()=>error);
@@ -1552,7 +1579,7 @@ so in httpinterceptor
   });
 
 
-below all are protocol to communicate through clinet and server .
+below all are protocol to communicate through client and server .
 
 open ID (who is user i.e Authentication) -  we have Authorization server (like azure Active directory like azure b2c , social website authentication not authorization like google , 
 facebook like sso)
@@ -1761,8 +1788,10 @@ ng build --configuration production (for production)
   npm run build:qa
  
  
+------------------------------------------
 
-
+*** In Angular project actually we create sperate yaml file for each deployment so no need to create evn for each 
+environment such as development, qa, uat , prod
 
 ---------------------------------------------------
 
@@ -1823,10 +1852,7 @@ AuthGuard:
 })
 export class AuthGuard implements CanActivate {
 
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  constructor(private authService: AuthService,private router: Router) {}
 
   canActivate(route: ActivatedRouteSnapshot): boolean {
 	// get token here
@@ -1839,13 +1865,9 @@ export class AuthGuard implements CanActivate {
 	// hey roles here
     const userRoles = this.authService.getRoles();
 
-    const allowedRoles =
-      route.data['roles'] as string[];
+    const allowedRoles =route.data['roles'] as string[];
 
-    const hasAccess =
-      allowedRoles.some(role =>
-        userRoles.includes(role)
-      );
+    const hasAccess =allowedRoles.some(role =>userRoles.includes(role));
 
     if (!hasAccess) {
       this.router.navigate(['/unauthorized']);
@@ -1962,10 +1984,7 @@ select row_number() over (partition by name order by name) as id , name from tbl
 
 create temp table :
  
-create table #Dest(
-  id varchar(max),
-  amount Desc(10,2)
-);
+create table #Dest(id varchar(max),amount Desc(10,2));
 
 
 Window function in sql server
@@ -1976,12 +1995,42 @@ select row_number() over(order by customerName) as orderCustomerName from tblCus
 select row_number() over (partion by customerName order by customerName) as orderCustomerName from tblCustomer;
 
 // assign some unique value to the customername value  
-// Ex : if rajesh come two time assign only only value to him
+// Ex : if rajesh come two time assign only one value to him
 
 select rank() over(order by customerName) as ordercustomerName from tblCustomer;
 
 // above rank() probelm id it create gap while assign unique value to avoid this dense_rank() is used
 select dense_rank() over(order by customerName) as OrderName from tblCustomer;
+
+
+when to use when
+
+Row_Number = Unique sequence for every row
+Ex: 1,2,3,4,5
+
+RANK = Ties share with rank;later ranks contain gaps
+Ex: 1,1,3,3,5
+
+DENSE_RANK() = ties share rank; later rank have no gaps
+Ex: 1,1,2,2,3
+
+
+Q > if you want one number per distinct name
+
+solution use dense_rank here
+
+Ex:
+select customername,dense_rank() over (order by customername) As NameNumber
+from (select distinct customername from tblCustomer)As Names;
+
+note : it will assign same rank to duplicate custname not remove it if you want to remove it
+
+Q 2> 
+with NumberedCustomers 
+AS(
+select * , row_rank() over (partition by custname order by custId) As rn from tblcustomer
+)
+select * from  NumberedCustomers where rn>1;
 
 ----------------------------
 find second largest employee of employee table
@@ -2005,7 +2054,7 @@ begin
 end
 -------------------------
 
-trigger syntax : instead of  / after qouery run perform operation here we perform trigger for audit when value insert or delete we store date with time
+trigger syntax : instead of  / after query run perform operation here we perform trigger for audit when value insert or delete we store date with time
 
 
 create trigger <rtname>
@@ -2016,13 +2065,11 @@ begin
 	insert into tblAudit value(GetDate());
 end
 
------------------
+---------------------------------------------
 primary key or foreign key
+
 create table tbl1(id int primary key)
-
-
 create table tbl2(id_fk int references tbl(id))
-
 
 -----------------------------
 
@@ -2036,6 +2083,7 @@ A design pattern is a reusable, well-tested solution to a common software design
 It provides a standard approach to designing software but is not a ready-made implementation.
 
 Types of Design Patterns
+
 1. Creational Patterns
 ----------------------
 Purpose: How objects are created.
@@ -2126,6 +2174,7 @@ an interface for creating objects but allows a dedicated Factory class to decide
 
 
 step 1> create interface
+
 public interface IPaymentGateway
 {
    void ProcessPayment(decimal amount);
@@ -2232,25 +2281,20 @@ step 5> controller
 public class PaymentController : ControllerBase
 {
 	private readonly IPaymentGatewayFactory _factory;
-	
 	public PaymentController(IPaymentGatewayFactory factory)
 	{
 		_factory = factory;
 	}
-
 	
 	[Httpost("pay")]
-	
 	public IActionResult Pay(string gateway,decimal Amount)
 	{
 		try
 		{
 			// Get specific gateway from the factory
 			var gateway = _factory.getPaymentGetway(gateway); 
-			
 			// execute payment logic
 			gateway.ProcessPayment(amount);
-			
 			return StatusCode(StatusCode.200ok,"payment sucessafull");
 			
 		}
@@ -7364,6 +7408,83 @@ getJsonUser()
 }
 
 
+Example : when use map() vs join()
+
+When you want an array as the result → use map()
+map() is used when you want to transform every item in an array and return a new array.
+For example:
+const SettingKeys = [
+  'pollingIntervalMinutes',
+  'pageSize'
+];
+
+const result = SettingKeys.map((key) => ({
+  key: key
+}));
+
+console.log(result);
+
+
+Result:
+[
+  { key: 'pollingIntervalMinutes' },
+  { key: 'pageSize' }
+]
+
+Or if you want:
+[
+  { settingKey: 'pollingIntervalMinutes' },
+  { settingKey: 'pageSize' }
+]
+
+then:
+const result = SettingKeys.map((key) => ({
+  settingKey: key
+}));
+
+2. When you want to change the array into a string → use join()
+Your current API needs:
+{
+  "keys": "pollingIntervalMinutes,pageSize"
+}
+
+So:
+const keys = SettingKeys.join(',');
+
+Result:
+pollingIntervalMinutes,pageSize
+
+Then:
+const request = {
+  keys: SettingKeys.join(',')
+};
+
+Result:
+{
+  "keys": "pollingIntervalMinutes,pageSize"
+}
+
+Easy way to remember
+map()   → array → array
+join()  → array → string
+
+For example:
+['a', 'b', 'c'].map(x => x.toUpperCase())
+
+gives:
+['A', 'B', 'C']
+
+Whereas:
+['a', 'b', 'c'].join(',')
+
+gives:
+'a,b,c'
+
+So yes, if your API expected an array of objects/keys, then map() would be appropriate. But because your API expects one comma-separated string, join() is the correct choice.
+
+------------------------------------------------------------------------------
+
+
 - subject : store value in memory 
  Ex  
  Subject Snum$ = new Subject<number>();  // initialize Subject here we can not declare initial value here
@@ -9021,6 +9142,17 @@ traditions: (zone.ZoneTradition ?? '')
  
  const greaterThan45 = numbers.find(a=>a>45);
  o/p : 56   i.e it will return only single value
+ 
+ 
+ 
+ Example: in api resposne we need to find object using 'key' properties and we want first records
+ Note: always rememebr use return here ow you get undefiend
+ 
+ 
+ 
+ const poolIntervalMinutesSettings = res.Data.find((setting: ApplicationSetting) => {
+  return setting.Key === settingkeyName.pollingIntervalMinutes;
+});
  
  
  
@@ -13774,3 +13906,40 @@ submitZone(): void {
 
     // API call here
 }
+
+------------------------------------------------
+
+in my project if we want to pass complex object querystrings and get resposne of this keys instead of passing questrysting for GET Method we use
+post method and pass object through body
+
+For example, suppose your public API eventually needs:
+
+{
+  "keys": [
+    "BackendPageSize",
+    "PollingInterval",
+    "MaxUploadSize"
+  ],
+  "zoneId": 5,
+  "includeDefault": true,
+  "language": "en"
+}
+
+A POST body is much cleaner than:
+
+/v1/settingbykey?keys=...&zoneId=5&includeDefault=true&language=en
+
+
+
+So a useful rule is:
+
+| Scenario 													| Method |
+|---|---|
+| Get one setting by key 									| **GET** |
+| Get a few settings with simple parameters 				| **GET** |
+| Get many settings with a simple list 						| **GET** is still fine |
+| Complex filtering/search criteria 						| **POST** can be appropriate |
+| Large list of keys 										| **POST** can be appropriate |
+| Sensitive information that shouldn't be exposed in URL 	| **POST** can be preferable, though POST itself is not encryption |
+| Create a new resource 									| **POST** |
+| Update existing resource 									| Usually **PUT/PATCH** |
