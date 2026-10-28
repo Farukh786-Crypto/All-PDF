@@ -2024,6 +2024,7 @@ select customername,dense_rank() over (order by customername) As NameNumber
 from (select distinct customername from tblCustomer)As Names;
 
 note : it will assign same rank to duplicate custname not remove it if you want to remove it
+then below query is used
 
 Q 2> 
 with NumberedCustomers 
@@ -2032,7 +2033,7 @@ select * , row_rank() over (partition by custname order by custId) As rn from tb
 )
 select * from  NumberedCustomers where rn>1;
 
-----------------------------
+------------------------------------------------------------------------------------------------------------------
 find second largest employee of employee table
 
 declare @n
@@ -2040,7 +2041,7 @@ set @n=1;
 select * from tblEmployee t1 where @n=
 select count(*) from tblEmployee t2 where t1.Salary <= t2.Salary;
 
------------------------------------
+-----------------------------------------------------------------------------------------------------------
 
 stored procedure syntax :
 
@@ -2071,7 +2072,9 @@ primary key or foreign key
 create table tbl1(id int primary key)
 create table tbl2(id_fk int references tbl(id))
 
------------------------------
+---------------------------------------------------------------------------------------------
+											Design Patteren
+											---------------
 
 What is a Design Pattern?
 A Design Pattern is a reusable solution to a commonly occurring software design problem. It is not code,
@@ -2167,6 +2170,11 @@ Problems:
 ❌ Tight coupling.
 if we want to add new payment gateway one more condition added here so complexity increses
 
+1> Problem :
+	When several payment providers exist , direct construction couple the controller to each class.
+2> Solution :	
+	A Factory choose the right implementation and return IPaymentGateway.
+
 The Factory Pattern removes this problem.
 
 The Factory Pattern is a Creational Design Pattern that provides 
@@ -2256,7 +2264,6 @@ public class PaymentGatewayFactory : IPaymentGatewayFactory
 			default :
 				throw new ArgumentException("Invalid payment gateway type");
 		}
-	
 	}
 }
 
@@ -2355,10 +2362,16 @@ Open/Closed Principle – Add new gateways without changing the controller.
 Dependency Inversion Principle – Depend on IPaymentGateway, not concrete classes.
 Single Responsibility Principle – The controller handles requests, while the factory handles object creation.
 
- -----------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
  
 											2. Unit Of Work 
-																		
+											-----------------	
+
+Problem : A Buysiness Opearation can change multiple entitites and should avoid partial persistence .
+Solution: Unit of Workes share one context and commit the tracked changes at one point.
+Limit : This is local to one database context ; distributed workflows across service need patterens such as
+		"SAGA"
+											
 
 In your microservices project (specifically the Ordering.API which uses SQL Server), you might have multiple repositories—for example, an OrderRepository and a CustomerRepository.
 
@@ -2393,7 +2406,6 @@ public interface IUnitOfWork : IDisposable
 
 
 step 2>The Implementation
-
 
 public class UnitOfWork : IUnitOfWork
 {
@@ -2440,8 +2452,9 @@ Unit of Work is for "One Database" (Local consistency).
 Saga Pattern is for "Multiple Databases" (Distributed consistency).
 
 
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-													3. CQRS (Command Query Responsibility Segregation )
+------------------------------------------------------------------------------------------------------------------------
+										3. CQRS (Command Query Responsibility Segregation )
+										--------------------------------------------------
 																		
 Q1. What is CQRS?
 
@@ -2477,9 +2490,7 @@ EmployeeService
       ▼
 Repository
 
-
 One service handles both read and write.
-
 
 CQRS
 
@@ -2567,9 +2578,7 @@ Returns data
 
 Advantages
 1. Single Responsibility
-
 One handler.
-
 One job.
 
 
@@ -2643,9 +2652,7 @@ C# Object
 
 Example :
 
-Employee emp =
-    JsonSerializer.Deserialize<Employee>(json)!;
-
+Employee emp =JsonSerializer.Deserialize<Employee>(json)!;
 Console.WriteLine(emp.Name);
 
 
@@ -2655,17 +2662,14 @@ Client sends JSON
 
 POST /api/employee
 Content-Type: application/json
-
-
 Body
-
 {
    "id":1,
    "name":"Umar"
 }
 
 Controller
-
+-----------------------
 [HttpPost]
 public IActionResult Create(Employee employee)
 {
@@ -2723,41 +2727,34 @@ Angular
 Q1. What is Serialization?
 
 Answer:
-
 Serialization is the process of converting a .NET object into JSON, XML, or another format so it can be transmitted over a network or stored.
 
 
 Q2. What is Deserialization?
 
 Answer:
-
 Deserialization is the process of converting JSON (or another serialized format) back into a .NET object.
 
 
 Q3. Why do we need Serialization?
-
 Because:
-
 APIs communicate using JSON.
 Objects cannot be sent directly over HTTP.
 JSON is language-independent and easy to consume.
 
 
-
 Q4. Which serializer does ASP.NET Core use?
-
 By default:
 System.Text.Json
 
-
 Earlier versions often used:
-
 Newtonsoft.Json (Json.NET)
 
 
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 
-                                                  -----------------  LINQ (Language Integrated Query) ------------------------
+                                            LINQ (Language Integrated Query) 
+											-------------------------------
 															  
 List<Employee>? employees = new List<Employee>() { 
     new Employee(){ Id=1,Name="Tom",Email="tom@gmail.com" },
@@ -2771,16 +2768,13 @@ List<Employee>? employees = new List<Employee>() {
 var methodsyntax = employees.select(e=>e.id).toList();
 var methodsyntax = employees.select(e=>new { e.Id , e.Name }).ToList();
 
-// add new elemetnt
-
+// add new element
 var selectMethod = employees.select(e=>new student()
 {
 		StudentId = e.Id,
 		stName = e.Name,
 		stEmail = e.Email
-	
 }).ToList();
-
 
 Quest 2>
 var dataSource = new List<Employee>()
@@ -2820,11 +2814,10 @@ Quest 5> Sorting in LINQ
   var desc = dataSourceStrings.orderByDescending(name=>name).ToList();
  
   ** thenBy and then
-  I use ThenBy when I need a multi-column sort. OrderBy performs the primary sort,
+  I use ThenBy when I need a multi-column sort.OrderBy performs the primary sort,
   
   // overrite probelm
-  var result = employees.OrderByDescending(e => e.Name)
-                      .OrderBy(e => e.Id);
+  var result = employees.OrderByDescending(e => e.Name).OrderBy(e => e.Id);
 					  
   What happens? The OrderBy(e => e.Id) completely destroys the work done by the first sort. The final list will only be sorted by Id in ascending order. The Name sorting is lost
   
@@ -2835,7 +2828,6 @@ Quest 5> Sorting in LINQ
 					  
 					  
 Quest6> Sort it then reverse it
-
 var result = employee.orderBydesceing(e=>e.name).Reverse();
 
 
@@ -2890,7 +2882,75 @@ var list2 = new List<int> { 3, 4, 5, 6 };
 	Last() - return last element 
 	ElementAt(index): Returns the item at a specific position (like list[i]).
 	
- -- pagination in Sql server	
+Ex:
+
+var names = new List<string>{"Amit","Sita","Amit","Rahul"};
+
+Single() - expect exactly one  ow Exception
+// This Works
+var sita = names.single(a=>a==="sita");
+// this throw InvalidOperationException (here we have 2 "Amit")
+var amit = names.Single(a=>a==="amit");
+
+
+so here to Handle Exception we need to use SingleOrDefault so here we get null
+var amit = names.SingleOrDefault(a=>a==="Amit");
+if(amit==null)
+{
+	_logger.LogInformation("amit Found more than once.");
+}
+
+Ex: 
+
+First || FirstOrDefault : First Match if not Found Exception 
+
+// Returns the First "Amit" at index 0
+var amitFirst = names.First(a=>a==="Amit");
+
+// Throws InvalidOperationException (no match Found)
+
+var zoe = names.First(a=>a==="Zoe");
+
+so here to Handle Exception we need to use FirstOrDefault
+it Returns null instead of Throwing Exception
+
+var maybezoe  = names.FirstOrDefault(a=>a==="Zoe");
+if(maybezoe==null)
+{
+	_logger.LogInformation("No zoe Found.");
+}
+
+Ex: Last : LastMatch Error Occur if none
+
+// Returns  the seconds "Amit" at index 2:
+var lastAmit = names.Last(a=>a=="Amit");
+
+
+// Returns "Rahul"
+var lastIrem = names.Last();
+
+
+Ex: ElementAt() picks By position i.e start with 0 index
+
+Use when when you know exact index by need
+
+// Returns "Sita" (index 1)
+var seconds = names.ElementAt(1);
+
+// Throws ArgumentOutRangeException
+
+var missing = names.ElementAt(10);
+
+Example 1:
+
+Combing filtering with element operators
+
+var result = names.where(a=>a.StartsWith("s")).firstOrDefault();
+Console.WriteLine = (result??"No Match found");
+
+------------------------------------------------------------------------	
+ -- pagination in Sql server
+ 
 DECLARE @PageNumber AS INT = 3;
 DECLARE @PageSize AS INT = 10;
 
@@ -2934,7 +2994,8 @@ public async Task<List<Employee>> GetEmployees(Pagination pagination)
 {
     return await _context.Employees
         .OrderBy(e => e.Id)
-        .Skip((pagination.PageNumber - 1) * pagination.PageSize) // skip records of previous page where it should start with 1 not 0
+        .Skip((pagination.PageNumber - 1) * pagination.PageSize) 
+		// skip records of previous page where it should start with 1 not 0
         .Take(pagination.PageSize)
 		.ToListAsync();
 }
@@ -2943,8 +3004,7 @@ public async Task<List<Employee>> GetEmployees(Pagination pagination)
 Step 4: Controller
 
 [HttpGet]
-public async Task<IActionResult> GetEmployees(
-    [FromQuery] Pagination pagination)
+public async Task<IActionResult> GetEmployees([FromQuery] Pagination pagination)
 {
     var employees = await _employeeRepository.GetEmployees(pagination);
 	return Ok(employees);
@@ -3035,7 +3095,6 @@ Error-prone
 Dependent on significant manual effort
 
 
-
 Question 4>
 How does Msuite help?
 
@@ -3069,29 +3128,24 @@ extract critical financial data with up to 98% accuracy
  the mortgage "paperwork gauntlet" into a high-speed, "one-touch" operation
 . My implementation of these automated workflows directly contributed to a 70% reduction in turnaround time and an 80% drop in data input errors,
  providing a vital quality control engine for the mortgage market
-
-
 	
-	Los service (getting file from blob storage),
-	indexing (using AI assign indexing to this file),
-	versioning(using AI document created version)
-   Document classifications (when agent manually check document and its version it can drag and drop reclassify and reorder in Angular perform redo and undo operation),
-   Data  extraction (what ever pdf file shows number like amount check validate by agent by pdf viwer i.e check amount is in $ or not adding filed ,adding entity , adding source
+	1>Los service(getting file from blob storage),
+	2>indexing (using AI assign indexing to this file),
+	3>versioning(using AI document created version)
+    4>Document classifications (when agent manually check document and its version it can drag and drop reclassify and reorder in Angular perform redo and undo operation),
+    5>Data  extraction (what ever pdf file shows number like amount check validate by agent by pdf viwer i.e check 		amount is in $ or not adding filed ,adding entity , adding source
      i.e Address entity check permant address m address validate) , 
-   rule validators (where Testing manually check it following certain rule or not)
+   6>rule validators (where Testing manually check it following certain rule or not)
  so specially i have worked on two project Module Document classification and data extraction and and loan global page where we see each customer having borrower loan 	 
 
 
 Document Classification: Developed a high-performance Angular UI for manual reclassification (drag-and-drop, undo/redo) 
 to supplement AI indexing of 350+ document types with 95% accuracy
-.
-Data Extraction & Validation: Built a PDF-integrated validation tool for agents to audit AI-extracted entities 
+.Data Extraction & Validation: Built a PDF-integrated validation tool for agents to audit AI-extracted entities 
 (e.g., currency formats, address validation) against strict "numbers and legal" rules
-.
-Loan Global Page: Designed a centralized dashboard to support "one-touch" operations, allowing reviewers to identify "conditions" 
+.Loan Global Page: Designed a centralized dashboard to support "one-touch" operations, allowing reviewers to identify "conditions" 
 (errors) quickly and reduce turnaround time by 70%
-.
-Microservices Architecture: Managed services for LOS (Blob Storage) and AI-driven Versioning to ensure data consistency across the multi-million dollar loan lifecycle
+.Microservices Architecture: Managed services for LOS (Blob Storage) and AI-driven Versioning to ensure data consistency across the multi-million dollar loan lifecycle
 
 ------------------------------------------
 
@@ -3114,28 +3168,42 @@ take meeting with other team if anything happen setup war room for major bug .
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 
-Extension class :  it gives extra feature to existing datatype class 
+Extension class :  it gives extra feature to existing datatype class  without modifying 
+that type.
+it is declared as static method inside static class and its first parameter used 'this' keyword.
+
+For Example :
 ---------------
 
 count string in sentence create custom method for existong datatype here it is string
 
 public static class ExtensionClass
 {
-	public static  wordCount(this string val)
+	public static int wordCount(this string val)
 	{
-		return val.split(' ');
-
+		return val.split(' ',StringSplitOptions.RemoveEmptyEntries).Length;
 	}
 } 
+
+// Usages
+string sentence = "C# extension methods are useful";
+int count  = sentence.wordCount();
+Console.WriteLine(count ); // 5
+
+
+Rules for Extension Method
+
+1> static class : the extension method must be declared in non-nested static class.
+2> static method : The extension method itselt must be static
+3> First parameter uses "this" :
 
 ----------------------------------------
 
 Exception - unhandled error occur which stop application for running handling exception . Exception is class
-
 User define custom exception  : 
 
-
-class InValidDenomenator: Exception  // Exception is class inherited here
+class 
+\: Exception  // Exception is class inherited here
 {
     public InValidDenomenator(string message): base(meesage)
 	{
@@ -3158,8 +3226,7 @@ static int Divide(int a,int b)
 try
 {
      int result = Divide(20,0);
-	 Console.WriteLine($"Divide num is ${result}");
-	 
+	 Console.WriteLine($"Divide num is ${result}");	 
 }
 catch(InValidDenomenator ex)
 {
@@ -3183,7 +3250,6 @@ Answer:
 An exception is a runtime error that interrupts the normal flow of program execution. In .NET, all exceptions inherit from the Exception class.
 
 Example:
-
 throw new InvalidDenominatorException("Zero not allowed");
 Here, an exception is thrown because division by zero is not allowed.
 
@@ -3191,7 +3257,6 @@ Here, an exception is thrown because division by zero is not allowed.
 2. Why do we use Exception Handling?
 
 Answer:
-
 Exception handling prevents the application from crashing unexpectedly and allows us to handle errors gracefully.
 
 1:inside try block we write suspicious code if any exception occur it passed to the catch bock
@@ -3215,17 +3280,14 @@ A custom exception is a user-defined exception created by inheriting the Excepti
 Example:
 class InvalidDenominatorException : Exception
 {
-    public InvalidDenominatorException(string message)
-        : base(message)
+    public InvalidDenominatorException(string message): base(message)
     {
     }
 }
 
 
 4. Why inherit from the Exception class?
-
 Answer:
-
 By inheriting from Exception, our custom exception gets built-in features such as:
 
 Message
@@ -3234,27 +3296,20 @@ InnerException
 Source
 
 Example:
-
 throw new InvalidDenominatorException("Zero not allowed");
 
 
 5. What is the purpose of base(message)?
-
 Answer:
-
 base(message) passes the error message to the parent Exception class so that it can be accessed through ex.Message.
 
-public InvalidDenominatorException(string message)
-    : base(message)
+public InvalidDenominatorException(string message): base(message)
 {
+
 }
 
-
 6. What is throw?
-
-Answer:
-
-throw is used to create and raise an exception.
+Answer:throw is used to create and raise an exception.
 
 Example:
 if (b == 0)
@@ -3264,9 +3319,7 @@ if (b == 0)
 
 
 8. Why do we use try?
-
 Answer:
-
 The try block contains code that may throw an exception.
 
 try
@@ -3294,9 +3347,7 @@ The exception propagates up the call stack. If nobody handles it, the applicatio
 
 
 12. What is finally?
-
 Answer:
-
 The finally block always executes whether an exception occurs or not.
 
 Example:
@@ -3308,9 +3359,7 @@ finally
 It is commonly used for cleanup, such as closing files or releasing database connections.
 
 13. What is StackTrace?
-
 Answer:
-
 StackTrace shows where the exception occurred and the sequence of method calls that led to it.
 
 Example:
@@ -3318,7 +3367,6 @@ Console.WriteLine(ex.StackTrace);
 
 
 14. Why use throw; instead of throw ex;?
-
 Correct:
 catch (Exception)
 {
@@ -3344,7 +3392,6 @@ Resets the stack trace to the current catch block.
 
 
 19. Can we have multiple catch blocks?
-
 Yes.
 
 
@@ -3399,7 +3446,7 @@ Console.WriteLine(string.join(",",arr));
 
 
 2. Right Rotate by 1
-
+i/p :  { 1, 2, 3, 4, 5 };
 Output
 
 [5, 1, 2, 3, 4]
@@ -3409,16 +3456,12 @@ Shift everything one position to the right.
 Put the saved element at the beginning.
 
 int[] arr = { 1, 2, 3, 4, 5 };
-
 int last = arr[arr.Length - 1];
-
 for (int i = arr.Length - 1; i > 0; i--)
 {
     arr[i] = arr[i - 1];
 }
-
 arr[0] = last;
-
 Console.WriteLine(string.Join(", ", arr));
 ------------------------------------------------------
 
@@ -3601,7 +3644,6 @@ No.It doesn't create new threads. It waits for multiple asynchronous tasks that 
 Q>Why not write this?
 
 await _httpClient.GetAsync("api1");
-
 await _httpClient.GetAsync("api2");
 
 Answer:
@@ -3867,7 +3909,7 @@ Interview Scenario
 
 Why is Repository Scoped?
 
-  - ",Repository depends on DbContext, and DbContext is scoped to a single HTTP request. Using Scoped ensures all repositories in that request share the same DbContext, 
+  - "Repository depends on DbContext, and DbContext is scoped to a single HTTP request. Using Scoped ensures all repositories in that request share the same DbContext, 
 which supports a consistent unit of work and proper transaction handling."
 
 
@@ -3932,13 +3974,9 @@ public async Task<List<Product>> GetProducts()
         Console.WriteLine("Returned from Cache");
         return products;
     }
-
     Console.WriteLine("Returned from Database");
-
     products = await _context.Products.ToListAsync();
-
     _memoryCache.Set("products", products);
-
     return products;
 }
 
@@ -3979,49 +4017,30 @@ Absolute Expiration
 
 Expires after a fixed time.
 
-_memoryCache.Set(
-    "products",
-    products,
-    TimeSpan.FromMinutes(10)
-);
+_memoryCache.Set("products",products,TimeSpan.FromMinutes(10));
 
 After 10 minutes, the cache is removed.
 
 
 Sliding Expiration
-
+-------------------------
 Keeps the cache alive as long as it's being accessed.
-
-
-_memoryCache.Set(
-    "products",
-    products,
-    new MemoryCacheEntryOptions
-    {
-        SlidingExpiration = TimeSpan.FromMinutes(5)
-    });
+_memoryCache.Set("products",products,new MemoryCacheEntryOptions{SlidingExpiration = TimeSpan.FromMinutes(5)});
 	
 Example:
 
 10:00 Request
-
 10:04 Request
-
 10:08 Request
-
 10:12 Request
 
 Cache never expires because it is continuously used.
-
 If nobody requests it for 5 minutes, it expires.
 
 
 Both Together
 
-_memoryCache.Set(
-    "products",
-    products,
-    new MemoryCacheEntryOptions
+_memoryCache.Set("products",products,new MemoryCacheEntryOptions
     {
         AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
         SlidingExpiration = TimeSpan.FromMinutes(10)
@@ -4046,9 +4065,7 @@ Example:
 public async Task AddProduct(Product product)
 {
     _context.Products.Add(product);
-
     await _context.SaveChangesAsync();
-
     _memoryCache.Remove("products");  // Remove existing cache
 }
 
@@ -4060,7 +4077,6 @@ Instead of checking manually:
 var products = await _memoryCache.GetOrCreateAsync("products", async entry =>
 {
     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-
     return await _context.Products.ToListAsync();
 });
 
@@ -4089,14 +4105,11 @@ Returns the cached data.
 
 select * from Employee e1 where 2 = (select count(*)from Employee e2 where e1.Salary > e2.Salary);
 
-DENSE_RANK() (Recommended) - first inner qouery work then pass to outer query
+DENSE_RANK() (Recommended) - first inner query work then pass to outer query
 
-SELECT *
-FROM
+SELECT * FROM
 (
-    SELECT *,
-    DENSE_RANK() OVER(ORDER BY Salary DESC) AS SalaryRank
-    FROM Employee
+    SELECT *,DENSE_RANK() OVER(ORDER BY Salary DESC) AS SalaryRank FROM Employee
 ) AS Emp
 WHERE SalaryRank = 2;
 
@@ -4105,16 +4118,10 @@ Find Second Highest Salary using CTE + DENSE_RANK()
 
 WITH EmployeeSalaryRank AS
 (
-    SELECT
-        EmployeeId,
-        EmployeeName,
-        Salary,
-        DENSE_RANK() OVER (ORDER BY Salary DESC) AS SalaryRank
+    SELECT EmployeeId,EmployeeName,Salary,DENSE_RANK() OVER (ORDER BY Salary DESC) AS SalaryRank
     FROM Employee
 )
-SELECT *
-FROM EmployeeSalaryRank
-WHERE SalaryRank = 2;
+SELECT * FROM EmployeeSalaryRank WHERE SalaryRank = 2;
 
 
 
@@ -4171,8 +4178,9 @@ Q: Why use DENSE_RANK() instead of ROW_NUMBER()?
 DENSE_RANK() is more appropriate because employees with the same salary receive the same rank, and there are no gaps in the ranking."
 
 
-------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
 											Delegate and Event in C#
+											-------------------------
 											
 What is a Delegate?
 
@@ -4210,13 +4218,9 @@ class Program
 	paymentgateway paymentobj = updateDatabase;
 	// step 4 call another methodQuery
 	 += SendEmail;       // call another method subscribe  + =
-	 
 	 // step 3
-	 
 	 paymentObj(100);  // pass argument with this two function called
-	 
 	 -= SendEmail;   // remove delegates by unsubscribe  -=
-	 
 	 += null // assign null to resolve this event is used
 }
 
@@ -4238,9 +4242,7 @@ const int a= 22222222222222222222222222222222222222222222 ;   data is overflow i
 const int b= 22222222222222222222222222222222222222222222 ;   data is overflow in int datatype
 
 int c = (unchecked)a+b;   // unchecked keyword check data is overflow still bypass it no error shown
-
-
------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 
 Note : when used join when we have two table and more and e store foreign key of id if other primary key table but we want to show name and other propery if id match used
 join for multiple table/
@@ -4249,18 +4251,10 @@ if i have three table customer, order , product
 
 now  i need to find customer who buys or order only 1 category of product
 
-SELECT
-	c.CustomerId,
-    c.CustomerName,
-	Count(p.Category)
-FROM Customer c
-INNER JOIN Orders o
-    ON c.CustomerId = o.CustomerId
-INNER JOIN Product p
-    ON o.ProductId = p.ProductId
-GROUP BY
-    c.CustomerId,
-    c.CustomerName
+SELECT c.CustomerId,.CustomerName,Count(p.Category) FROM Customer c
+INNER JOIN Orders oN c.CustomerId = o.CustomerId
+INNER JOIN Product p oN o.ProductId = p.ProductId
+GROUP BY c.CustomerId,c.CustomerName
 HAVING COUNT(DISTINCT p.Category) = 1;
 
 
@@ -4274,14 +4268,18 @@ How did you identify the solution?
 Since the result is customer-wise, I grouped by customer. The requirement is based on product categories, not the number of products, 
 so I counted distinct categories using COUNT(DISTINCT p.Category). Finally, I filtered customers having exactly one distinct category.
 
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-ACID 
+------------------------------------------------------------------------------------------------------------------------
+												ACID 
+							--------------------------------------------------
+												
 Atomicity = all in one if bankA trnasfer money to bankB failed them amount substraction from BankA should be rollback against
 Consistency = if bank amount is negative then no amount debited bcoz rule or constraint need to following
 Isolation = when transaction from bank A to bankB perform no one should stop ir not gonna impact from outside
 Durability = transaction done then save it
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-															Threading
+------------------------------------------------------------------------------------------------------------------------
+												Threading
+								---------------------------------------------------
+															
 															
 - if you run programme parallelly . 
 - types of thread 
@@ -4289,7 +4287,8 @@ Durability = transaction done then save it
 - foreground thread  - all thread are running even if main thread closed
 
 - Thread Pooling - each and every time thread excute
-- step 1> thre object create    2> thren memory allocate      3> thread run    4> GC
+- step 1> thre object create    2> then memory allocate      3> thread run    4> GC (Garbage Collector)
+
 - Ex :
  MultiThread obj = new MultiThread(); 
  Thread obj = new Thread(obj.Func1()) ;
@@ -4300,7 +4299,7 @@ Durability = transaction done then save it
   
   Ex : threadpool.QueeUserWorkItem();
   
- -- TPL
+ -- TPL (Task Parallel Library)
  
  - in threading context switching happen means if we have two thread one thread run first then second start later then it stop then again go to thread 1 but we think it run execute
  parallel 
@@ -4308,9 +4307,9 @@ Durability = transaction done then save it
  - in task we have paraller.for(); here equally divide thread to each core 
  - Task support thread pooling and async and await
  
- ---------------------------------------------------------------------------------------------------------------------------------------
- to increase api speed
-
+ -----------------------------------------------------------------------------------------------------------------------
+									to increase api speed
+									-----------------------
 
 async and await code = perform asynchronous calling using async and await (context switching)
 
@@ -4363,7 +4362,7 @@ When food is ready, waiter calls you back. You didn't stand frozen at the counte
 
  - separate logic from datatype assign datatype at runtime to increase reusability
  
- - below logic write compare function for compare data wheter it is int or string
+ - below logic write compare function for compare data wheter it is int or string i.e any datatype
  
   // create generic method 
   
@@ -4395,23 +4394,17 @@ When food is ready, waiter calls you back. You didn't stand frozen at the counte
  }
  
   -----------------------------------------------
-  
  - IEnumerable  = only browse collections  internally use IEnumerator 
  - ICollection  = browse + count collections
- - IList = broswe + count +add + remove
-
-  ------------------------------------------------------------------------------------------------------------------------
+ - IList = broswe + count + add + remove ------------------------------------------------------------------------------------------------------------------------
   
   How to apply cors policy in .NET
    got to progrm.cs file
   
   builder.service.AddCors(options=>{
 		options.AddPolicy("AllowFrontEnd",policy=>{
-	 policy.AllowAnyOrigin(),
-			.AllowAnyMethod(),
-			.AllowAnyHeader()
+			policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()
 		})
-	
   })
 
 app.UseCors("AllowFrontEnd");
@@ -4460,11 +4453,18 @@ for(int i=0;i<arr.length;i++)
 
 
 
-
 ------------------------------------------------------------------------------------------------------------------------------------
+note : for angular we require static web application 
 
-Azure CI CD 
+Continuous Integration (CI) :
+	- Validate every change with dependency installation,linting,automated tests and production build .
 
+Continuous Delivery or Deployment (CD) :
+	- take succesfull build and relese it  to an environment . Delivery may required approval . 
+deplyment may publish automatically .
+
+steps Azure CI CD 
+-------------
 
 1> go to the https://dev.azure.com then go to devops
 1> push your code in azure deops with create new organization after that while authenticate we need to create public token and need to paste as password 
@@ -4484,6 +4484,79 @@ Azure CI CD
    then select stages = here we have development with add environment variable of dbConnectionstring  and others
 6> before deployment we need to click pre approval   
 
+---------------------------------------------------------------------------
+while deployment of angular applivation in static web app in anzure 
+for routing we get eror that pages not found to resolve this we get solution
+
+Solution :
+
+
+1. What does withHashLocation() do?
+Normally, your Angular application uses URLs like:
+Normal Angular routing
+
+https://example.com/admin/login
+
+Hash routing
+
+https://example.com/#/admin/login
+
+With hash routing, the browser sends a request to the server for the part before #, not the Angular route after it. Angular reads #/admin/login and displays the matching component. This helps avoid server-side 404 errors when directly opening Angular routes. 
+
+Angular
++1
+
+
+2. How to enable it in app.config.ts
+Because your project uses standalone Angular components, you can configure it in app.config.ts.
+
+Your current code probably looks similar to this:
+
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes)
+  ]
+};
+
+
+
+Change it to:
+
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter, withHashLocation } from '@angular/router'; // CHANGED
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes, withHashLocation()) // CHANGED
+  ]
+};
+
+
+
+The important change is importing withHashLocation and passing it to provideRouter. This is the supported Angular API. 
+
+Angular
++1
+
+
+
+3. What happens to your website?
+After rebuilding and deploying, your admin URL should look like:
+
+https://mango-sea-08a84bd1e.3.azurestaticapps.net/#/admin/login
+
+Test it by opening the URL directly and refreshing the browser.
+4. Should you use hash routing or normal routing?
+Consideration	Hash routing	Normal routing
+URL contains 			# Yes		No
+Requires server fallback for Angular routes	Usually not	Yes
+Clean URLs				No			Yes
+Suitable for your Azure-hosted Angular app	Yes	Yes, with proper configuration
 
 
 ----------------------------------------------------------------------------------------------------------------
@@ -4495,7 +4568,8 @@ write connection string in appsetting
 
 {
 	"ConnectionStrings":{
-		"DefaultConnectionStrings":"Server-.;Database:App;UserId=;Password=;Trusted_Connection=True;TrustedServerCertificate=True;"
+		"DefaultConnectionStrings":"Server-.;Database:App;UserId=;Password=;Trusted_Connection=True;
+		TrustedServerCertificate=True;"
 	}
 
 ----------------------------------------------------------------------------------------------------------------
@@ -4508,11 +4582,6 @@ Response.Cookies.Append(key,value);
 delete cookies
 
 Response.Cookies.Delete(somekey);
-
----------------------------------------
-
------------------------------------------------------
-
 
 --------------------------------------------------------------------------------------
 create trigger <triggername>
@@ -13775,7 +13844,10 @@ But localStorage is not automatically reactive. If Component A updates localStor
 									***	Git  ***
 									------------
 									------------
-									
+Scenario 1> if repo present in gitlab or azure repo then clone it after check branch name in visual studio or visual studio code 
+bcoz sometimes master branch we dont have code so we dont get anything so clone it then switch to dev or other branch then pull it 
+
+scenario 2>							
 									
 before push your code in git 
 
@@ -13943,3 +14015,13 @@ So a useful rule is:
 | Sensitive information that shouldn't be exposed in URL 	| **POST** can be preferable, though POST itself is not encryption |
 | Create a new resource 									| **POST** |
 | Update existing resource 									| Usually **PUT/PATCH** |
+
+
+---------------------------------------------------------------------------------------
+
+
+Feature	signal()	computed()
+Purpose	Stores a value	Calculates a value
+Can you update it directly?	Yes, using .set() or .update()	No, it's read-only
+Updates automatically?	When you change it	When its dependent signals change
+Example	shareUrl	whatsappShareHref
